@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from enum import Enum
 import queue
 import threading 
+import time
 from typing import Callable
 
 class DNSQueryType(Enum): 
@@ -50,14 +51,17 @@ class DNSQueryReceiver:
 
 class CSVDNSQueryReceiver(DNSQueryReceiver): 
 
-    def __init__(self, csv_file_path: str, on_recv: Callable[[DNSQuery], None], max_queue_size=DEFAULT_MAX_QUEUE_SIZE): 
+    def __init__(self, csv_file_path: str, on_recv: Callable[[DNSQuery], None], max_queue_size=DEFAULT_MAX_QUEUE_SIZE, sleep_time=1): 
         self.csv_file = open(csv_file_path, "r")
+        self.sleep_time = sleep_time
         super().__init__(on_recv, max_queue_size)
 
     def _receive_query(self) -> DNSQuery: 
+        # TODO need to check if the file is empty 
         line = self.csv_file.readline()
         values = line.split(',')
         query, addr, query_type = values
+        time.sleep(self.sleep_time)
         return DNSQuery(query=query, ip_address=addr, query_type=DNSQueryType(query_type))
 
 
