@@ -90,8 +90,7 @@ class CSVRecordReceiver(RecordReceiver):
 
     def __exit__(self, exc_type, exc_value, traceback): 
         self.csv_file.close()
-        super().__exit__(exc_type, exc_value, traceback)
-        return False
+        return super().__exit__(exc_type, exc_value, traceback)
 
     def close(self): 
         self.csv_file.close()
