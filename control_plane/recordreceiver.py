@@ -79,7 +79,6 @@ class RecordReceiver:
         raise NotImplementedError("_receive_record must be implemented by derived classes of DNSQueryReceiver")
 
 
-
 class CSVRecordReceiver(RecordReceiver): 
 
     def __init__(self, path: str, on_recv: Callable[[RecordEvent], None], max_queue_size=DEFAULT_MAX_QUEUE_SIZE, sleep_time: float | None=None): 
