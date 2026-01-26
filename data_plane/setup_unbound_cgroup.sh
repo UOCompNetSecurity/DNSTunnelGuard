@@ -1,3 +1,6 @@
+
+apk add linux-headers
+
 rc-update add cgroups boot
 
 rc-service cgroups start
