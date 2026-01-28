@@ -14,6 +14,7 @@
 // DNS
 #define DNS_HDR_LEN 12
 #define MAX_QNAME_LEN 100
+#define DNS_PORT 53
 
 #define QTYPE_A 1
 #define QTYPE_AAAA 28
@@ -52,6 +53,7 @@ int check_tunnel(struct __sk_buff* skb)
     if ((void*)(data + sizeof(struct iphdr)) >= data_end)
         return PASS;
 
+    /* ------------------------------ IP ---------------------------- */ 
     // TODO handle IPV6
     struct iphdr* ip_header = data;
 
@@ -62,10 +64,8 @@ int check_tunnel(struct __sk_buff* skb)
     if (is_ip_blocked)
         return DROP;
 
-    // TODO use this somehow 
-    uint16_t src_port;
+    /* ---------------------------- Transport ---------------------------- */ 
     uint16_t dst_port;
-
     void* dns_header;
 
     if (ip_header->protocol == IPPROTO_UDP)
@@ -73,7 +73,6 @@ int check_tunnel(struct __sk_buff* skb)
         struct udphdr* udp_header = (void*)ip_header + (ip_header->ihl * 4);
         if ((void*)udp_header + sizeof(struct udphdr) >= data_end)
             return PASS;
-        src_port   = udp_header->source;
         dst_port   = udp_header->dest;
         dns_header = (void*)udp_header + sizeof(struct udphdr);
     }
@@ -82,7 +81,6 @@ int check_tunnel(struct __sk_buff* skb)
         struct tcphdr* tcp_header = (void*)ip_header + (ip_header->ihl * 4);
         if ((void*)tcp_header + sizeof(struct tcphdr) >= data_end)
             return PASS;
-        src_port   = tcp_header->source;
         dst_port   = tcp_header->dest;
         dns_header = (void*)tcp_header + sizeof(struct tcphdr);
     }
@@ -91,11 +89,16 @@ int check_tunnel(struct __sk_buff* skb)
         return PASS;
     }
 
-    // DSN Verification
+    /* ----------------------------  DNS ---------------------------- */ 
+
+    // This is ingress traffic, we only need to analyze queries going to DNS servers, 
+    // not traffic being sent back to the client
+    if (dst_port != DNS_PORT)
+        return PASS; 
+
     if (dns_header >= data_end)
         return PASS;
 
-    // TODO check if this domain is blocked
     char* qname = dns_header + DNS_HDR_LEN;
 
     if ((void*)qname >= data_end)
@@ -139,6 +142,7 @@ int check_tunnel(struct __sk_buff* skb)
 
     uint16_t qtype = bpf_ntohs(*qtype_ptr);
 
+    // Drop queries of unnallowed query types
     switch (qtype)
     {
     case QTYPE_A:

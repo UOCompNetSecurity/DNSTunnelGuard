@@ -15,8 +15,11 @@ class RecordAnalyzer():
     def analyze(self, event: RecordEvent): 
         qname = event.record.questions[0].qname
         ip = event.src_ip_addr
-        self.rule_writer.block_domain(qname)
-        self.rule_writer.block_ip_address(ip)
+
+        with self.rule_writer as r: 
+            r.block_domain(qname)
+            r.block_src_ip_address(ip)
+
         print(f"Blocked domain {qname} and ip address {ip}")
 
 if __name__ == "__main__": 

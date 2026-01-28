@@ -1,9 +1,17 @@
 
 from rulewriter import BPFRuleWriter
+import ctypes
 
 def main(): 
-    rule_writer = BPFRuleWriter("./libguard.so", "ip_block_map")
-    rule_writer.block_ip_address("10.0.2.50")
+    ingress_rule_writer = BPFRuleWriter(
+        so_file="./libguard.so", 
+        src_ip_map="egress_src_ip", 
+        dst_ip_map="egress_dst_ip"
+    )
+
+    with ingress_rule_writer as r: 
+        r.block_src_ip_address(10)
+
 
 if __name__ == "__main__": 
     main()
