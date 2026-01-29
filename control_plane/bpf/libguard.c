@@ -34,8 +34,9 @@ int get_map_fd(const char* name)
 }
 
 
-int map_ip(int fd, uint32_t ip_addr, uint8_t blocked)
+int map_ip(int fd, uint32_t ip_addr)
 {
+    int blocked = 1;
     return bpf_map_update_elem(fd, &ip_addr, &blocked, BPF_ANY);
 }
 
@@ -43,4 +44,16 @@ int unmap_ip(int fd, uint32_t ip_addr)
 {
     return bpf_map_delete_elem(fd, &ip_addr);
 }
+
+int map_domain(int fd, char* domain_name)
+{
+    int blocked = 1; 
+    return bpf_map_update_elem(fd, &domain_name, &blocked, BPF_ANY);
+}
+
+int unmap_domain(int fd, char* domain)
+{
+    return bpf_map_delete_elem(fd, &domain);
+}
+
 
