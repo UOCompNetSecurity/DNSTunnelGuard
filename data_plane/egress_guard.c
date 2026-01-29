@@ -35,15 +35,15 @@ struct
 
 } egress_ip_map SEC(".maps");
 
-// struct 
-// {
-//     __uint(type, BPF_MAP_TYPE_HASH);
-//     __type(key, char[MAX_QNAME_LEN]); // Domain Name
-//     __type(value, uint8_t);           // is blocked
-//     __uint(max_entries, MAX_BLOCKED_LENGTH);
-//     __uint(pinning, LIBBPF_PIN_BY_NAME);
-//
-// } domain_map SEC(".maps");
+struct 
+{
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, char[MAX_QNAME_LEN]); // Domain Name
+    __type(value, uint8_t);           // is blocked
+    __uint(max_entries, MAX_BLOCKED_LENGTH);
+    __uint(pinning, LIBBPF_PIN_BY_NAME);
+
+} domain_map SEC(".maps");
 
 SEC("cgroup_skb/egress")
 int check_tunnel(struct __sk_buff* skb)
@@ -112,11 +112,6 @@ int check_tunnel(struct __sk_buff* skb)
     char domain_buffer[MAX_QNAME_LEN];
     int  label_chars = 0;
 
-    int label_splits[MAX_QNAME_LEN];
-    int label_split_num = 0; 
-
-    char fmt[] = "Qname: %s\n";
-    bpf_trace_printk(fmt, sizeof(fmt), qname);
 
     int byte_num;
     #pragma unroll
@@ -135,40 +130,35 @@ int check_tunnel(struct __sk_buff* skb)
         {
             domain_buffer[byte_num] = '.';
             label_chars = qname[byte_num];
-            label_splits[label_split_num++] = byte_num; 
         }
         else
         {
             domain_buffer[byte_num] = qname[byte_num];
             label_chars--;
         }
-        byte_num++;
     }
-
-    // char fmt[] = "Domain buffer : %s\n";
-    // bpf_trace_printk(fmt, sizeof(fmt), domain_buffer);
 
     // No terminater byte found
     if (domain_buffer[byte_num] != '\0')
-        return PASS; 
+        return DROP; 
 
+    
+    // Check each sub domain to see if it is blocked
+    #pragma unroll
+    for (int i = 0; i < MAX_QNAME_LEN; i++)
+    {
+        if (domain_buffer[i] == '.')
+        {
+            char* sub_domain = domain_buffer + i + 1; 
+            uint8_t* is_blocked = bpf_map_lookup_elem(&domain_map, &domain_buffer);
+        }
+    }
 
-    // // Check each sub domain to see if it is blocked
-    // for (int i = 0; i < label_split_num; i++)
-    // {
-    //     uint8_t* is_domain_blocked = bpf_map_lookup_elem(&egress_ip_map, domain_buffer + label_split_num + 1);
-    //
-    //     char fmt[] = "Checking domain: %s\n";
-    //     bpf_trace_printk(fmt, sizeof(fmt), domain_buffer + label_split_num + 1);
-    //
-    //     if (is_domain_blocked)
-    //         return DROP; 
-    // }
-    //
-    // uint16_t* qtype_ptr = (uint16_t*)(qname + byte_num + 1);
-    //
-    // if ((char*)(qtype_ptr + 1) > (char*)data_end)
-    //     return PASS;
+    uint16_t* qtype_ptr = (uint16_t*)(qname + byte_num + 1);
+
+    if ((char*)(qtype_ptr + 1) > (char*)data_end)
+        return DROP;
+
     //
     // uint16_t qtype = bpf_ntohs(*qtype_ptr);
     //
@@ -190,7 +180,7 @@ int check_tunnel(struct __sk_buff* skb)
     // }
     //
 
-    return DROP;
+    return PASS;
 }
 
 char _license[] SEC("license") = "GPL";
