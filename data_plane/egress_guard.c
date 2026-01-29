@@ -13,7 +13,7 @@
 
 // DNS
 #define DNS_HDR_LEN 12
-#define MAX_QNAME_LEN 100
+#define MAX_QNAME_LEN 20
 #define DNS_PORT 53
 
 #define QTYPE_A 1
@@ -34,16 +34,16 @@ struct
 
 } egress_ip_map SEC(".maps");
 
-struct 
-{
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, char[MAX_QNAME_LEN]); // Domain Name
-    __type(value, uint8_t);           // is blocked
-    __uint(max_entries, MAX_BLOCKED_LENGTH);
-    __uint(pinning, LIBBPF_PIN_BY_NAME);
-
-} domain_map SEC(".maps");
-
+// struct 
+// {
+//     __uint(type, BPF_MAP_TYPE_HASH);
+//     __type(key, char[MAX_QNAME_LEN]); // Domain Name
+//     __type(value, uint8_t);           // is blocked
+//     __uint(max_entries, MAX_BLOCKED_LENGTH);
+//     __uint(pinning, LIBBPF_PIN_BY_NAME);
+//
+// } domain_map SEC(".maps");
+//
 SEC("cgroup_skb/egress")
 int check_tunnel(struct __sk_buff* skb)
 {
@@ -93,8 +93,8 @@ int check_tunnel(struct __sk_buff* skb)
 
     // This is ingress traffic, we only need to analyze queries going to DNS servers, 
     // not traffic being sent back to the client
-    if (dst_port != DNS_PORT)
-        return PASS; 
+    // if (dst_port != DNS_PORT)
+    //     return PASS; 
 
     if (dns_header >= data_end)
         return PASS;
@@ -132,6 +132,8 @@ int check_tunnel(struct __sk_buff* skb)
     }
 
     char* domain_name = domain_buffer + 1;
+    char fmt[] = "domain name: %s\n";
+    bpf_trace_printk(fmt, sizeof(fmt), domain_name);
 
     // TODO Check each sub domain name if its blocked 
 
