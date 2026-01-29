@@ -33,7 +33,7 @@ struct
     __uint(max_entries, MAX_BLOCKED_LENGTH);
     __uint(pinning, LIBBPF_PIN_BY_NAME);
 
-} egress_ip_map SEC(".maps");
+} dst_ip_map SEC(".maps");
 
 struct 
 {
@@ -62,7 +62,7 @@ int check_tunnel(struct __sk_buff* skb)
 
     uint32_t ip_big_d = bpf_htonl(ip_header->daddr);
 
-    uint8_t* is_ip_blocked = bpf_map_lookup_elem(&egress_ip_map, &ip_big_d);
+    uint8_t* is_ip_blocked = bpf_map_lookup_elem(&dst_ip_map, &ip_big_d);
 
     if (is_ip_blocked)
         return DROP;
