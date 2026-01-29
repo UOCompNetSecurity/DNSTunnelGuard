@@ -13,7 +13,8 @@
 
 // DNS
 #define DNS_HDR_LEN 12
-#define MAX_QNAME_LEN 100
+#define MAX_QNAME_LEN 50
+#define MAX_LABEL_SIZE 63
 #define DNS_PORT 53
 
 #define QTYPE_A 1
@@ -34,15 +35,15 @@ struct
 
 } egress_ip_map SEC(".maps");
 
-struct 
-{
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, char[MAX_QNAME_LEN]); // Domain Name
-    __type(value, uint8_t);           // is blocked
-    __uint(max_entries, MAX_BLOCKED_LENGTH);
-    __uint(pinning, LIBBPF_PIN_BY_NAME);
-
-} domain_map SEC(".maps");
+// struct 
+// {
+//     __uint(type, BPF_MAP_TYPE_HASH);
+//     __type(key, char[MAX_QNAME_LEN]); // Domain Name
+//     __type(value, uint8_t);           // is blocked
+//     __uint(max_entries, MAX_BLOCKED_LENGTH);
+//     __uint(pinning, LIBBPF_PIN_BY_NAME);
+//
+// } domain_map SEC(".maps");
 
 SEC("cgroup_skb/egress")
 int check_tunnel(struct __sk_buff* skb)
@@ -50,10 +51,12 @@ int check_tunnel(struct __sk_buff* skb)
     void* data_end = (void*)(long)skb->data_end;
     void* data     = (void*)(long)skb->data;
 
+
     if ((void*)(data + sizeof(struct iphdr)) >= data_end)
         return PASS;
 
     /* ------------------------------ IP ---------------------------- */ 
+
     // TODO handle IPV6
     struct iphdr* ip_header = data;
 
@@ -65,6 +68,7 @@ int check_tunnel(struct __sk_buff* skb)
         return DROP;
 
     /* ---------------------------- Transport ---------------------------- */ 
+
     uint16_t dst_port;
     void* dns_header;
 
@@ -91,10 +95,11 @@ int check_tunnel(struct __sk_buff* skb)
 
     /* ----------------------------  DNS ---------------------------- */ 
 
-    // This is ingress traffic, we only need to analyze queries going to DNS servers, 
+    // This is egress traffic, we only need to analyze queries going to DNS servers, 
     // not traffic being sent back to the client
-    if (dst_port != DNS_PORT)
-        return PASS; 
+    
+    // if (dst_port != DNS_PORT)
+    //     return PASS; 
 
     if (dns_header >= data_end)
         return PASS;
@@ -105,12 +110,20 @@ int check_tunnel(struct __sk_buff* skb)
         return PASS;
 
     char domain_buffer[MAX_QNAME_LEN];
-    int  byte_num    = 0;
     int  label_chars = 0;
-    while (byte_num < MAX_QNAME_LEN)
+
+    int label_splits[MAX_QNAME_LEN];
+    int label_split_num = 0; 
+
+    char fmt[] = "Qname: %s\n";
+    bpf_trace_printk(fmt, sizeof(fmt), qname);
+
+    int byte_num;
+    #pragma unroll
+    for (byte_num = 0; byte_num < MAX_QNAME_LEN; byte_num++)
     {
-        if ((void*)&qname[byte_num] >= data_end)
-            return PASS;
+        if ((void*)&qname[byte_num] >= data_end || label_chars > MAX_LABEL_SIZE)
+            return DROP;
 
         if (qname[byte_num] == '\0')
         {
@@ -122,6 +135,7 @@ int check_tunnel(struct __sk_buff* skb)
         {
             domain_buffer[byte_num] = '.';
             label_chars = qname[byte_num];
+            label_splits[label_split_num++] = byte_num; 
         }
         else
         {
@@ -131,34 +145,50 @@ int check_tunnel(struct __sk_buff* skb)
         byte_num++;
     }
 
-    char* domain_name = domain_buffer + 1;
+    // char fmt[] = "Domain buffer : %s\n";
+    // bpf_trace_printk(fmt, sizeof(fmt), domain_buffer);
 
-    // TODO Check each sub domain name if its blocked 
+    // No terminater byte found
+    if (domain_buffer[byte_num] != '\0')
+        return PASS; 
 
-    uint16_t* qtype_ptr = (uint16_t*)(qname + byte_num + 1);
 
-    if ((char*)(qtype_ptr + 1) > (char*)data_end)
-        return PASS;
-
-    uint16_t qtype = bpf_ntohs(*qtype_ptr);
-
-    // Drop queries of unnallowed query types
-    switch (qtype)
-    {
-    case QTYPE_A:
-    case QTYPE_AAAA:
-    case QTYPE_CNAME:
-    case QTYPE_MX:
-    case QTYPE_NS:
-    case QTYPE_SOA:
-    case QTYPE_PTR:
-        // TODO: push packet to control plane
-        return PASS;
-
-    default: 
-        return DROP;
-    }
-
+    // // Check each sub domain to see if it is blocked
+    // for (int i = 0; i < label_split_num; i++)
+    // {
+    //     uint8_t* is_domain_blocked = bpf_map_lookup_elem(&egress_ip_map, domain_buffer + label_split_num + 1);
+    //
+    //     char fmt[] = "Checking domain: %s\n";
+    //     bpf_trace_printk(fmt, sizeof(fmt), domain_buffer + label_split_num + 1);
+    //
+    //     if (is_domain_blocked)
+    //         return DROP; 
+    // }
+    //
+    // uint16_t* qtype_ptr = (uint16_t*)(qname + byte_num + 1);
+    //
+    // if ((char*)(qtype_ptr + 1) > (char*)data_end)
+    //     return PASS;
+    //
+    // uint16_t qtype = bpf_ntohs(*qtype_ptr);
+    //
+    // // Drop queries of unnallowed query types
+    // switch (qtype)
+    // {
+    // case QTYPE_A:
+    // case QTYPE_AAAA:
+    // case QTYPE_CNAME:
+    // case QTYPE_MX:
+    // case QTYPE_NS:
+    // case QTYPE_SOA:
+    // case QTYPE_PTR:
+    //     // TODO: push packet to control plane
+    //     return PASS;
+    //
+    // default: 
+    //     return DROP;
+    // }
+    //
 
     return DROP;
 }
