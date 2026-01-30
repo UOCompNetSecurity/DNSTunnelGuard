@@ -82,6 +82,7 @@ class BPFRuleWriter(RuleWriter):
         if self.blocked_ip_map_fd < 0: 
             raise Exception(f"Could not find file descriptor for map {self.ip_map}")
 
+
     def close_maps(self): 
         if self.blocked_ip_map_fd != -1: 
             os.close(self.blocked_ip_map_fd)
