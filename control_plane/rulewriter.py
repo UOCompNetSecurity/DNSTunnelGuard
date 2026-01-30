@@ -12,23 +12,27 @@ class RuleWriter:
 
     """
 
+    def __open__(self): 
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback): 
+        return False
+
     def block_domain(self, domain: str): 
         raise NotImplementedError("block_domain not implemented")
 
-    def block_src_ip_address(self, ip_address: str): 
+    def block_ip_address(self, ip_address: str): 
         raise NotImplementedError("block_src_ip_address not implemented")
-
-    def block_dst_ip_address(self, ip_address: str): 
-        raise NotImplementedError("block_dst_ip_address not implemented")
 
 class CSVRuleWriter(RuleWriter): 
 
     def __init__(self, path: str): 
         self._path = path
-        self._csvfile = None
-        self._csv_writer = None
+        self._csv_file = open(self._path, "w")
+        self._csv_writer = csv.writer(self._csv_file)
+        self._csv_writer.writerow(["domain", "ip address"])
+        self._csv_file.close()
 
-    # No 
     def open(self): 
         self._csv_file = open(self._path, "w")
         self._csv_writer = csv.writer(self._csv_file)
@@ -50,21 +54,14 @@ class CSVRuleWriter(RuleWriter):
         if self._csv_writer is not None: 
             self._csv_writer.writerow([domain, ""])
 
-    def block_src_ip_address(self, ip_address: str): 
-        if self._csv_writer is not None: 
-            self._csv_writer.writerow(["", ip_address, ""])
-
-    def block_dst_ip_address(self, ip_address: str): 
-        if self._csv_writer is not None: 
-            self._csv_writer.writerow(["", "", ip_address])
-
+    def block_ip_address(self, ip_address: str): 
+        self._csv_writer.writerow(["", ip_address])
 
 class BPFRuleWriter(RuleWriter): 
 
     bpf: ctypes.CDLL | None = None
 
-    def __init__(self, so_file: str, src_ip_map: None | str=None, dst_ip_map: None | str=None, domain_map: None | str=None): 
-
+    def __init__(self, so_file: str, ip_map: str, domain_map: str): 
         if BPFRuleWriter.bpf is None: 
             BPFRuleWriter.bpf = ctypes.CDLL(so_file)
 
@@ -78,11 +75,9 @@ class BPFRuleWriter(RuleWriter):
         self.bpf.map_domain.argtypes   = [ctypes.c_int, ctypes.c_char_p]
         self.bpf.unmap_domain.argtypes = [ctypes.c_int, ctypes.c_char_p]
 
-        self.src_ip_map = src_ip_map 
-        self.dst_ip_map = dst_ip_map
+        self.ip_map = ip_map
         self.domain_map = domain_map
-        self.blocked_src_ip_map_fd = -1
-        self.blocked_dst_ip_map_fd = -1
+        self.blocked_ip_map_fd = -1
         self.blocked_domain_map_fd = -1
 
     # No need to call these when using "with" context management
@@ -90,26 +85,13 @@ class BPFRuleWriter(RuleWriter):
         if self.bpf is None: 
             raise Exception("No SO loaded")
 
-        if self.src_ip_map is not None: 
-            self.blocked_src_ip_map_fd = self.bpf.get_map_fd(self.src_ip_map.encode("utf-8"))
-            if self.blocked_src_ip_map_fd < 0: 
-                raise Exception(f"Could not find file descriptor for map {self.src_ip_map}")
-
-        if self.dst_ip_map is not None: 
-            self.blocked_dst_ip_map_fd = self.bpf.get_map_fd(self.dst_ip_map.encode("utf-8"))
-            if self.blocked_src_ip_map_fd < 0: 
-                raise Exception(f"Could not find file descriptor for map {self.dst_ip_map}")
-
-        if self.domain_map is not None: 
-            self.blocked_domain_map_fd = self.bpf.get_map_fd(self.domain_map.encode("utf-8"))
-            if self.blocked_domain_map_fd < 0: 
-                raise Exception(f"Could not find file descriptor for map {self.blocked_domain_map_fd}")
+        self.blocked_ip_map_fd = self.bpf.get_map_fd(self.ip_map.encode("utf-8"))
+        if self.blocked_ip_map_fd < 0: 
+            raise Exception(f"Could not find file descriptor for map {self.ip_map}")
 
     def close_maps(self): 
-        if self.blocked_src_ip_map_fd != -1: 
-            os.close(self.blocked_src_ip_map_fd)
-        if self.blocked_dst_ip_map_fd != -1: 
-            os.close(self.blocked_dst_ip_map_fd)
+        if self.blocked_ip_map_fd != -1: 
+            os.close(self.blocked_ip_map_fd)
 
     def __enter__(self): 
         self.open_maps()
@@ -119,25 +101,11 @@ class BPFRuleWriter(RuleWriter):
         self.close_maps()
         return False
 
-    def block_src_ip_address(self, ip_address: str): 
-        if self.src_ip_map is None: 
-            raise Exception("Could not block source IP address, source map ip not set")
-        self._block_ip(self.blocked_src_ip_map_fd, ip_address)
+    def block_ip_address(self, ip_address: str): 
+        self._block_ip(self.blocked_ip_map_fd, ip_address)
 
-    def block_dst_ip_address(self, ip_address: str): 
-        if self.dst_ip_map is None: 
-            raise Exception("Could not block destination IP address, source map ip not set")
-        self._block_ip(self.blocked_dst_ip_map_fd, ip_address)
-
-    def unblock_src_ip_address(self, ip_address: str): 
-        if self.src_ip_map is None: 
-            raise Exception("Could not unblock source IP address, source map ip not set")
-        self._unblock_ip(self.blocked_src_ip_map_fd, ip_address)
-
-    def unblock_dst_ip_address(self, ip_address: str): 
-        if self.dst_ip_map is None: 
-            raise Exception("Could not unblock destination IP address, source map ip not set")
-        self._unblock_ip(self.blocked_dst_ip_map_fd, ip_address)
+    def unblock_ip_address(self, ip_address: str): 
+        self._unblock_ip(self.blocked_ip_map_fd, ip_address)
 
     def block_domain(self, domain: str): 
         if self.domain_map is None: 

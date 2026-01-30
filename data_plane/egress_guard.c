@@ -33,7 +33,7 @@ struct
     __uint(max_entries, MAX_BLOCKED_LENGTH);
     __uint(pinning, LIBBPF_PIN_BY_NAME);
 
-} dst_ip_map SEC(".maps");
+} ip_map SEC(".maps");
 
 struct 
 {
@@ -62,7 +62,7 @@ int check_tunnel(struct __sk_buff* skb)
 
     uint32_t ip_big_d = bpf_htonl(ip_header->daddr);
 
-    uint8_t* is_ip_blocked = bpf_map_lookup_elem(&dst_ip_map, &ip_big_d);
+    uint8_t* is_ip_blocked = bpf_map_lookup_elem(&ip_map, &ip_big_d);
 
     if (is_ip_blocked)
         return DROP;
@@ -97,7 +97,6 @@ int check_tunnel(struct __sk_buff* skb)
 
     // This is egress traffic, we only need to analyze queries going to DNS servers, 
     // not traffic being sent back to the client
-    
     // if (dst_port != DNS_PORT)
     //     return PASS; 
 
@@ -141,7 +140,6 @@ int check_tunnel(struct __sk_buff* skb)
     // No terminater byte found
     if (domain_buffer[byte_num] != '\0')
         return DROP; 
-
     
     // Check each sub domain to see if it is blocked
     #pragma unroll
@@ -159,26 +157,26 @@ int check_tunnel(struct __sk_buff* skb)
     if ((char*)(qtype_ptr + 1) > (char*)data_end)
         return DROP;
 
-    //
-    // uint16_t qtype = bpf_ntohs(*qtype_ptr);
-    //
-    // // Drop queries of unnallowed query types
-    // switch (qtype)
-    // {
-    // case QTYPE_A:
-    // case QTYPE_AAAA:
-    // case QTYPE_CNAME:
-    // case QTYPE_MX:
-    // case QTYPE_NS:
-    // case QTYPE_SOA:
-    // case QTYPE_PTR:
-    //     // TODO: push packet to control plane
-    //     return PASS;
-    //
-    // default: 
-    //     return DROP;
-    // }
-    //
+    
+    uint16_t qtype = bpf_ntohs(*qtype_ptr);
+    
+    // Drop queries of unnallowed query types
+    switch (qtype)
+    {
+    case QTYPE_A:
+    case QTYPE_AAAA:
+    case QTYPE_CNAME:
+    case QTYPE_MX:
+    case QTYPE_NS:
+    case QTYPE_SOA:
+    case QTYPE_PTR:
+        // TODO: push packet to control plane
+        return PASS;
+    
+    default: 
+        return DROP;
+    }
+    
 
     return PASS;
 }

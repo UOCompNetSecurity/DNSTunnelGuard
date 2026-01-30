@@ -18,7 +18,7 @@ class RecordAnalyzer():
 
         with self.rule_writer as r: 
             r.block_domain(qname)
-            r.block_src_ip_address(ip)
+            r.block_ip_address(ip)
 
         print(f"Blocked domain {qname} and ip address {ip}")
 
