@@ -59,13 +59,8 @@ class CSVRuleWriter(RuleWriter):
 
 class BPFRuleWriter(RuleWriter): 
 
-    bpf: ctypes.CDLL | None = None
-
     def __init__(self, so_file: str, ip_map: str, domain_map: str): 
-        if BPFRuleWriter.bpf is None: 
-            BPFRuleWriter.bpf = ctypes.CDLL(so_file)
-
-        self.bpf = BPFRuleWriter.bpf
+        self.bpf = ctypes.CDLL(so_file)
 
         self.bpf.get_map_fd.argtypes = [ctypes.c_char_p]
 
@@ -82,9 +77,6 @@ class BPFRuleWriter(RuleWriter):
 
     # No need to call these when using "with" context management
     def open_maps(self): 
-        if self.bpf is None: 
-            raise Exception("No SO loaded")
-
         self.blocked_ip_map_fd = self.bpf.get_map_fd(self.ip_map.encode("utf-8"))
         if self.blocked_ip_map_fd < 0: 
             raise Exception(f"Could not find file descriptor for map {self.ip_map}")
@@ -108,30 +100,21 @@ class BPFRuleWriter(RuleWriter):
         self._unblock_ip(self.blocked_ip_map_fd, ip_address)
 
     def block_domain(self, domain: str): 
-        if self.bpf is None: 
-            raise Exception("No SO loaded")
         res = self.bpf.map_domain(self.blocked_domain_map_fd, self._domain_to_wire(domain))
         if res < 0: 
             raise Exception(f"Failed to block domain {domain}")
 
     def unblock_domain(self, domain: str): 
-        if self.bpf is None: 
-            raise Exception("No SO loaded")
         res = self.bpf.unmap_domain(self.blocked_domain_map_fd, self._domain_to_wire(domain))
         if res < 0: 
             raise Exception(f"Failed to block domain {domain}")
 
     def _block_ip(self, fd: int, ip_address: str): 
-        if self.bpf is None: 
-            raise Exception("No SO loaded")
         res = self.bpf.map_ip(fd, self._ip_to_int(ip_address))
         if res < 0: 
             raise Exception(f"Failed to block IP address {ip_address}")
 
     def _unblock_ip(self, fd: int, ip_address): 
-        if self.bpf is None: 
-            raise Exception("No SO loaded")
-
         res = self.bpf.unmap_ip(fd, self._ip_to_int(ip_address))
         if res < 0: 
             raise Exception(f"Failed to unblock IP address {ip_address}")
