@@ -108,20 +108,16 @@ class BPFRuleWriter(RuleWriter):
         self._unblock_ip(self.blocked_ip_map_fd, ip_address)
 
     def block_domain(self, domain: str): 
-        if self.domain_map is None: 
-            raise Exception("Could not block domain, source map ip not set")
         if self.bpf is None: 
             raise Exception("No SO loaded")
-        res = self.bpf.map_domain(self.blocked_domain_map_fd, domain.encode("utf-8"))
+        res = self.bpf.map_domain(self.blocked_domain_map_fd, self._domain_to_wire(domain))
         if res < 0: 
             raise Exception(f"Failed to block domain {domain}")
 
     def unblock_domain(self, domain: str): 
-        if self.domain_map is None: 
-            raise Exception("Could not unblock domain, source map ip not set")
         if self.bpf is None: 
             raise Exception("No SO loaded")
-        res = self.bpf.unmap_domain(self.blocked_domain_map_fd, domain.encode("utf-8"))
+        res = self.bpf.unmap_domain(self.blocked_domain_map_fd, self._domain_to_wire(domain))
         if res < 0: 
             raise Exception(f"Failed to block domain {domain}")
 
@@ -144,7 +140,17 @@ class BPFRuleWriter(RuleWriter):
         ip_bytes = socket.inet_pton(socket.AF_INET, ip_addr)
         return struct.unpack("!I", ip_bytes)[0]
 
+    def _domain_to_wire(self, domain: str) -> bytes: 
+        domains = domain.split('.')
 
+        wire_domain = b""
+
+        for d in domains: 
+            wire_domain += len(d).to_bytes(1)
+            wire_domain += d.encode("utf-8")
+
+        wire_domain += b"\x00"
+        return wire_domain
 
 
 

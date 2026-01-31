@@ -13,8 +13,8 @@
 
 // DNS
 #define DNS_HDR_LEN 12
-#define MAX_QNAME_LEN 50
-#define MAX_LABEL_SIZE 63
+#define MAX_QNAME_LEN 32
+#define MAX_LABEL_SIZE 20
 #define DNS_PORT 53
 
 #define QTYPE_A 1
@@ -33,9 +33,9 @@ struct
     __uint(max_entries, MAX_BLOCKED_LENGTH);
     __uint(pinning, LIBBPF_PIN_BY_NAME);
 
-} ip_map SEC(".maps");
+} blkd_ip_map SEC(".maps");
 
-struct 
+struct
 {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, char[MAX_QNAME_LEN]); // Domain Name
@@ -43,7 +43,8 @@ struct
     __uint(max_entries, MAX_BLOCKED_LENGTH);
     __uint(pinning, LIBBPF_PIN_BY_NAME);
 
-} domain_map SEC(".maps");
+} blkd_domain_map SEC(".maps");
+
 
 SEC("cgroup_skb/egress")
 int check_tunnel(struct __sk_buff* skb)
@@ -51,26 +52,26 @@ int check_tunnel(struct __sk_buff* skb)
     void* data_end = (void*)(long)skb->data_end;
     void* data     = (void*)(long)skb->data;
 
-
     if ((void*)(data + sizeof(struct iphdr)) >= data_end)
         return PASS;
 
-    /* ------------------------------ IP ---------------------------- */ 
+    /* ------------------------------ IP ---------------------------- */
 
     // TODO handle IPV6
     struct iphdr* ip_header = data;
 
     uint32_t ip_big_d = bpf_htonl(ip_header->daddr);
 
-    uint8_t* is_ip_blocked = bpf_map_lookup_elem(&ip_map, &ip_big_d);
+    // TODO This should be checking the requestee IP, so need to somehow keep that IP on ingress traffic
+    uint8_t* is_ip_blocked = bpf_map_lookup_elem(&blkd_ip_map, &ip_big_d);
 
     if (is_ip_blocked)
         return DROP;
 
-    /* ---------------------------- Transport ---------------------------- */ 
+    /* ---------------------------- Transport ---------------------------- */
 
     uint16_t dst_port;
-    void* dns_header;
+    void*    dns_header;
 
     if (ip_header->protocol == IPPROTO_UDP)
     {
@@ -93,73 +94,80 @@ int check_tunnel(struct __sk_buff* skb)
         return PASS;
     }
 
-    /* ----------------------------  DNS ---------------------------- */ 
-
-    // This is egress traffic, we only need to analyze queries going to DNS servers, 
-    // not traffic being sent back to the client
-    // if (dst_port != DNS_PORT)
-    //     return PASS; 
-
     if (dns_header >= data_end)
         return PASS;
 
+    /* ----------------------------  DNS ---------------------------- */
+
+    /* 
+     * This is egress traffic, we only need to analyze queries going to DNS servers,
+     * not traffic being sent back to the client
+     */ 
+
+    // if (dst_port != DNS_PORT)
+    //     return PASS;
+    //
+    
+
     char* qname = dns_header + DNS_HDR_LEN;
 
-    if ((void*)qname >= data_end)
-        return PASS;
-
-    char domain_buffer[MAX_QNAME_LEN];
-    int  label_chars = 0;
-
-
-    int byte_num;
-    #pragma unroll
-    for (byte_num = 0; byte_num < MAX_QNAME_LEN; byte_num++)
+    /* Determine the length and drop if too long*/ 
+    int len;
+    for (len = 0; len < MAX_QNAME_LEN; len++)
     {
-        if ((void*)&qname[byte_num] >= data_end || label_chars > MAX_LABEL_SIZE)
+        if ((void*)qname + len >= data_end)
             return DROP;
 
-        if (qname[byte_num] == '\0')
-        {
-            domain_buffer[byte_num] = '\0';
-            break;
-        }
+        if (qname[len] == '\0')
+            break; 
+    }
 
-        if (label_chars == 0)
+    if (len > MAX_QNAME_LEN)
+        return DROP;
+
+
+    /* 
+     * Check each subdomain and drop if it is blocked
+    * EX: JFDSL.attacker.com
+    * Checks JFDSL.attacker.com
+    * Then checks attacker.com
+    * Then .com. 
+    * Checks in wire format, not presentation
+    */
+
+    int remaining_label_chars = 0;
+    for (int i = 0; i < len; i++)
+    {
+        if (remaining_label_chars == 0)
         {
-            domain_buffer[byte_num] = '.';
-            label_chars = qname[byte_num];
+            char sub_domain[MAX_QNAME_LEN];
+
+            int copy_len = len - i + 1; 
+
+            if (bpf_probe_read_kernel(sub_domain, copy_len, qname + i) < 0)
+                return DROP;
+
+            if (bpf_map_lookup_elem(&blkd_domain_map, sub_domain))
+                return DROP;
+
+            remaining_label_chars = qname[i];
         }
         else
         {
-            domain_buffer[byte_num] = qname[byte_num];
-            label_chars--;
+            remaining_label_chars--;
         }
     }
 
-    // No terminater byte found
-    if (domain_buffer[byte_num] != '\0')
-        return DROP; 
-    
-    // Check each sub domain to see if it is blocked
-    #pragma unroll
-    for (int i = 0; i < MAX_QNAME_LEN; i++)
-    {
-        if (domain_buffer[i] == '.')
-        {
-            char* sub_domain = domain_buffer + i + 1; 
-            uint8_t* is_blocked = bpf_map_lookup_elem(&domain_map, &domain_buffer);
-        }
-    }
 
-    uint16_t* qtype_ptr = (uint16_t*)(qname + byte_num + 1);
+    /* Filter by QTYPE */ 
+
+    uint16_t* qtype_ptr = (uint16_t*)(qname + len + 1);
 
     if ((char*)(qtype_ptr + 1) > (char*)data_end)
         return DROP;
 
-    
     uint16_t qtype = bpf_ntohs(*qtype_ptr);
-    
+
     // Drop queries of unnallowed query types
     switch (qtype)
     {
@@ -172,11 +180,10 @@ int check_tunnel(struct __sk_buff* skb)
     case QTYPE_PTR:
         // TODO: push packet to control plane
         return PASS;
-    
-    default: 
+
+    default:
         return DROP;
     }
-    
 
     return PASS;
 }

@@ -9,7 +9,7 @@ def main():
     )
 
     with ingress_rule_writer as r: 
-        r.block_ip_address("192.168.55.1")
+        r.block_domain("attacker.com")
 
 
 if __name__ == "__main__": 
