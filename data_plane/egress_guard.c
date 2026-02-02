@@ -140,7 +140,7 @@ int check_tunnel(struct __sk_buff* skb)
     {
         if (remaining_label_chars == 0)
         {
-            char sub_domain[MAX_QNAME_LEN];
+            char sub_domain[MAX_QNAME_LEN] = {0};
 
             int copy_len = len - i + 1; 
 
@@ -168,7 +168,7 @@ int check_tunnel(struct __sk_buff* skb)
 
     uint16_t qtype = bpf_ntohs(*qtype_ptr);
 
-    // Drop queries of unnallowed query types
+    /* Drop queries of unnallowed query types */
     switch (qtype)
     {
     case QTYPE_A:

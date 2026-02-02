@@ -81,9 +81,16 @@ class BPFRuleWriter(RuleWriter):
         if self.blocked_ip_map_fd < 0: 
             raise Exception(f"Could not find file descriptor for map {self.ip_map}")
 
+        self.blocked_domain_map_fd = self.bpf.get_map_fd(self.domain_map.encode("utf-8"))
+        if self.blocked_domain_map_fd < 0: 
+            raise Exception(f"Could not find file descriptor for map {self.domain_map}")
+
     def close_maps(self): 
         if self.blocked_ip_map_fd != -1: 
             os.close(self.blocked_ip_map_fd)
+        if self.blocked_domain_map_fd != -1: 
+            os.close(self.blocked_domain_map_fd)
+
 
     def __enter__(self): 
         self.open_maps()
@@ -100,23 +107,19 @@ class BPFRuleWriter(RuleWriter):
         self._unblock_ip(self.blocked_ip_map_fd, ip_address)
 
     def block_domain(self, domain: str): 
-        res = self.bpf.map_domain(self.blocked_domain_map_fd, self._domain_to_wire(domain))
-        if res < 0: 
+        if self.bpf.map_domain(self.blocked_domain_map_fd, self._domain_to_wire(domain)) < 0: 
             raise Exception(f"Failed to block domain {domain}")
 
     def unblock_domain(self, domain: str): 
-        res = self.bpf.unmap_domain(self.blocked_domain_map_fd, self._domain_to_wire(domain))
-        if res < 0: 
+        if self.bpf.unmap_domain(self.blocked_domain_map_fd, self._domain_to_wire(domain)) < 0: 
             raise Exception(f"Failed to block domain {domain}")
 
     def _block_ip(self, fd: int, ip_address: str): 
-        res = self.bpf.map_ip(fd, self._ip_to_int(ip_address))
-        if res < 0: 
+        if self.bpf.map_ip(fd, self._ip_to_int(ip_address)) < 0: 
             raise Exception(f"Failed to block IP address {ip_address}")
 
     def _unblock_ip(self, fd: int, ip_address): 
-        res = self.bpf.unmap_ip(fd, self._ip_to_int(ip_address))
-        if res < 0: 
+        if self.bpf.unmap_ip(fd, self._ip_to_int(ip_address)) < 0: 
             raise Exception(f"Failed to unblock IP address {ip_address}")
 
     def _ip_to_int(self, ip_addr: str) -> bytes: 
@@ -134,7 +137,6 @@ class BPFRuleWriter(RuleWriter):
 
         wire_domain += b"\x00"
         return wire_domain
-
 
 
 

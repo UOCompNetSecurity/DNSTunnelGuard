@@ -6,6 +6,7 @@
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 #include <unistd.h> 
+#include <stdlib.h> 
 
 #define MAX_QNAME_LEN 32
 
@@ -52,7 +53,6 @@ int map_domain(int fd, char* domain_name)
     char key[MAX_QNAME_LEN] = {0};  
     strncpy(key, domain_name, MAX_QNAME_LEN);
     uint8_t blocked = 1;
-    printf("Blocking %s\n", key);
 
     return bpf_map_update_elem(fd, key, &blocked, BPF_ANY);
 }
@@ -63,5 +63,15 @@ int unmap_domain(int fd, char* domain)
     strncpy(key, domain, MAX_QNAME_LEN);
     return bpf_map_delete_elem(fd, key);
 }
+
+
+
+
+
+
+
+
+
+
 
 
