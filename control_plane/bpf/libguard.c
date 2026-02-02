@@ -6,7 +6,6 @@
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 #include <unistd.h> 
-#include <stdlib.h> 
 
 #define MAX_QNAME_LEN 32
 

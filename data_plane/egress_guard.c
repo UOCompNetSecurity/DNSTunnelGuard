@@ -71,6 +71,7 @@ int check_tunnel(struct __sk_buff* skb)
     /* ---------------------------- Transport ---------------------------- */
 
     uint16_t dst_port;
+    uint16_t src_port; 
     void*    dns_header;
 
     if (ip_header->protocol == IPPROTO_UDP)
@@ -79,6 +80,7 @@ int check_tunnel(struct __sk_buff* skb)
         if ((void*)udp_header + sizeof(struct udphdr) >= data_end)
             return PASS;
         dst_port   = udp_header->dest;
+        src_port   = udp_header->source; 
         dns_header = (void*)udp_header + sizeof(struct udphdr);
     }
     else if (ip_header->protocol == IPPROTO_TCP)
@@ -87,6 +89,7 @@ int check_tunnel(struct __sk_buff* skb)
         if ((void*)tcp_header + sizeof(struct tcphdr) >= data_end)
             return PASS;
         dst_port   = tcp_header->dest;
+        src_port   = tcp_header->source; 
         dns_header = (void*)tcp_header + sizeof(struct tcphdr);
     }
     else
@@ -104,10 +107,8 @@ int check_tunnel(struct __sk_buff* skb)
      * not traffic being sent back to the client
      */ 
 
-    // if (dst_port != DNS_PORT)
-    //     return PASS;
-    //
-    
+    if (bpf_ntohs(dst_port) != DNS_PORT)
+        return PASS;
 
     char* qname = dns_header + DNS_HDR_LEN;
 
