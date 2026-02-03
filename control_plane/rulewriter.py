@@ -4,7 +4,7 @@ import ctypes
 import socket 
 import struct 
 import os 
-
+from bcc import BPF
 
 class RuleWriter: 
     """
@@ -22,7 +22,7 @@ class RuleWriter:
         raise NotImplementedError("block_domain not implemented")
 
     def block_ip_address(self, ip_address: str): 
-        raise NotImplementedError("block_src_ip_address not implemented")
+        raise NotImplementedError("block_ip_address not implemented")
 
 class CSVRuleWriter(RuleWriter): 
 
@@ -57,54 +57,34 @@ class CSVRuleWriter(RuleWriter):
     def block_ip_address(self, ip_address: str): 
         self._csv_writer.writerow(["", ip_address])
 
+
 class BPFRuleWriter(RuleWriter): 
+    # TODO: finish this 
 
-    def __init__(self, so_file: str, ip_map: str, domain_map: str): 
-        self.bpf = ctypes.CDLL(so_file)
+    def __init__(self, bpf_file: str, cgroup_path: str): 
 
-        self.bpf.get_map_fd.argtypes = [ctypes.c_char_p]
+        bpf = BPF(file=bpf_file)
 
-        # IP map 
-        self.bpf.map_ip.argtypes       = [ctypes.c_int, ctypes.c_uint32]
-        self.bpf.unmap_ip.argtypes     = [ctypes.c_int, ctypes.c_uint32]
-        self.bpf.map_domain.argtypes   = [ctypes.c_int, ctypes.c_char_p]
-        self.bpf.unmap_domain.argtypes = [ctypes.c_int, ctypes.c_char_p]
+        ingress_fn = bpf.load_func("tunnel_guard_ingress", BPF.CGROUP_SKB)
+        egress_fn = bpf.load_func("tunnel_guard_engress", BPF.CGROUP_SKB)
 
-        self.ip_map = ip_map
-        self.domain_map = domain_map
-        self.blocked_ip_map_fd = -1
-        self.blocked_domain_map_fd = -1
+        fd = os.open(cgroup_path, os.O_RDONLY)
 
-    # No need to call these when using "with" context management
-    def open_maps(self): 
-        self.blocked_ip_map_fd = self.bpf.get_map_fd(self.ip_map.encode("utf-8"))
-        if self.blocked_ip_map_fd < 0: 
-            raise Exception(f"Could not find file descriptor for map {self.ip_map}")
+        bpf.attach_bgroup(BPF.BPF_CGROUP_INET_INGRESS, fd, obj=ingress_fn)
+        bpf.attach_bgroup(BPF.BPF_CGROUP_INET_EGRESS, fd, obj=egress_fn)
 
-        self.blocked_domain_map_fd = self.bpf.get_map_fd(self.domain_map.encode("utf-8"))
-        if self.blocked_domain_map_fd < 0: 
-            raise Exception(f"Could not find file descriptor for map {self.domain_map}")
-
-    def close_maps(self): 
-        if self.blocked_ip_map_fd != -1: 
-            os.close(self.blocked_ip_map_fd)
-        if self.blocked_domain_map_fd != -1: 
-            os.close(self.blocked_domain_map_fd)
-
-
-    def __enter__(self): 
-        self.open_maps()
-        return self 
-
-    def __exit__(self, exc_type, exc_value, traceback): 
-        self.close_maps()
-        return False
+        self.blocked_domain_map = bpf["blkd_domain_map"]
+        self.blocked_ip_map = bpf["blkd_ip_map"]
+        self.query_ringbuffer = bpf["query_events"]
 
     def block_ip_address(self, ip_address: str): 
-        self._block_ip(self.blocked_ip_map_fd, ip_address)
+        key = self.blocked_ip_map.Key(self._ip_to_int(ip_address))
+        value = self.blocked_ip_map.Leaf(1)
+        self.blocked_ip_map[key] = value
 
     def unblock_ip_address(self, ip_address: str): 
-        self._unblock_ip(self.blocked_ip_map_fd, ip_address)
+        key = self.blocked_ip_map.Key(self._ip_to_int(ip_address))
+        del self.blocked_ip_map[key]
 
     def block_domain(self, domain: str): 
         if self.bpf.map_domain(self.blocked_domain_map_fd, self._domain_to_wire(domain)) < 0: 
@@ -115,6 +95,7 @@ class BPFRuleWriter(RuleWriter):
             raise Exception(f"Failed to block domain {domain}")
 
     def _block_ip(self, fd: int, ip_address: str): 
+        
         if self.bpf.map_ip(fd, self._ip_to_int(ip_address)) < 0: 
             raise Exception(f"Failed to block IP address {ip_address}")
 
