@@ -8,7 +8,7 @@ from dnslib import EDNS0
 
 class GuardController: 
 
-    def __init__(self, analyzers: list[DNSAnalyzer], firewall: Firewall)
+    def __init__(self, analyzers: list[DNSAnalyzer], firewall: Firewall): 
         self.analyzers = analyzers
         self.firewall = firewall
 
