@@ -65,19 +65,23 @@ int unmap_domain(int fd, char* domain)
     return bpf_map_delete_elem(fd, key);
 }
 
+/* Ring buffer state */  
 struct ring_buffer* query_rb = NULL; 
+int (*rb_callback)(void* ctx, void* data, size_t size) = NULL;
 
-struct query_event recv_query(int fd, int timeout)
+int create_ringbuffer(int fd, int (*callback)(void* ctx, void* data, size_t size))
 {
+    rb_callback = callback; 
+    query_rb = ring_buffer__new(fd, callback, NULL, 0);
     if (query_rb == NULL)
-    {
-        query_rb = ring_buffer__new(fd, )
-    }
+        return -1; 
+    return 0; 
 }
 
-
-
-
+void poll_ringbuffer(int timeout)
+{
+    ring_buffer__poll(query_rb, timeout);
+}
 
 
 

@@ -172,13 +172,14 @@ int tunnel_guard_egress(struct __sk_buff* skb)
     /* Drop queries of unnallowed query types */
     switch (qtype)
     {
-    case QTYPE_A:
-    case QTYPE_AAAA:
-    case QTYPE_CNAME:
-    case QTYPE_MX:
-    case QTYPE_NS:
-    case QTYPE_SOA:
-    case QTYPE_PTR:
+    default: 
+    // case QTYPE_A:
+    // case QTYPE_AAAA:
+    // case QTYPE_CNAME:
+    // case QTYPE_MX:
+    // case QTYPE_NS:
+    // case QTYPE_SOA:
+    // case QTYPE_PTR:
     {
         /* Pass query to userspace for further inspection */ 
         struct query_event* event = bpf_ringbuf_reserve(&query_events, sizeof(struct query_event), 0); 
@@ -195,8 +196,8 @@ int tunnel_guard_egress(struct __sk_buff* skb)
         return PASS;
     }
 
-    default:
-        return DROP;
+    // default:
+    //     return DROP;
     }
 
     return PASS;
