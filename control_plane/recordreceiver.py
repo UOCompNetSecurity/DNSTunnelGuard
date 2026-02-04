@@ -27,9 +27,9 @@ class RecordReceiver:
 
     """
 
-    def __init__(self, on_recv: Callable[[RecordEvent], None], max_queue_size=DEFAULT_MAX_QUEUE_SIZE): 
+    def __init__(self, on_recv: Callable[[RecordEvent], None], dns_analyzer, max_queue_size=DEFAULT_MAX_QUEUE_SIZE): 
         self._query_queue = queue.Queue(max_queue_size)
-        self._recv_thread = threading.Thread(target=self._on_recv_worker, args=(on_recv,))
+        self._recv_thread = threading.Thread(target=self._on_recv_worker, args=(on_recv, dns_analyzer,))
 
     def __enter__(self): 
         self._recv_thread.start()
@@ -60,7 +60,7 @@ class RecordReceiver:
         self._recv_thread.join()
     # --------------- 
 
-    def _on_recv_worker(self, on_recv): 
+    def _on_recv_worker(self, on_recv, dns_analyzer): 
         """
         Runs in a seperate thread, executing the users recv function from records pushed to the query queue 
 
@@ -69,7 +69,7 @@ class RecordReceiver:
             query = self._query_queue.get()
             if query is None: 
                 break 
-            on_recv(query)
+            on_recv(query, dns_analyzer)
 
     def _receive_record(self) -> RecordEvent | None: 
         """
@@ -81,12 +81,12 @@ class RecordReceiver:
 
 class CSVRecordReceiver(RecordReceiver): 
 
-    def __init__(self, path: str, on_recv: Callable[[RecordEvent], None], max_queue_size=DEFAULT_MAX_QUEUE_SIZE, sleep_time: float | None=None): 
+    def __init__(self, path: str, on_recv: Callable[[RecordEvent], None], dns_analyzer, max_queue_size=DEFAULT_MAX_QUEUE_SIZE, sleep_time: float | None=None): 
         self.sleep_time = sleep_time
         self.csv_file = open(path, "r")
         self.csv_reader = csv.reader(self.csv_file)
         next(self.csv_reader) # skip the first line 
-        super().__init__(on_recv, max_queue_size)
+        super().__init__(on_recv, dns_analyzer, max_queue_size)
 
     def __exit__(self, exc_type, exc_value, traceback): 
         self.csv_file.close()

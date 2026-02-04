@@ -15,7 +15,7 @@ class RecordAnalyzer():
     def __init__(self, rule_writer: RuleWriter): 
         self.rule_writer = rule_writer 
 
-    def analyze(self, event: RecordEvent):
+    def analyze(self, event: RecordEvent, dns_analyzer: DNSAnalyzer):
         # Grab the data to analyze from the record event
         timestamp = event.timestamp
         src_ip_addr = event.src_ip_addr
@@ -36,9 +36,9 @@ class RecordAnalyzer():
         # print(dns_query_event)
         
         # TODO Dispatch analysis to the proper analysis class
-        args = parse_args()
-        analyzer_class = ANALYZER_REGISTRY[args.analyzer]
-        dns_analyzer : DNSAnalyzer = analyzer_class()
+        # args = parse_args()
+        # analyzer_class = ANALYZER_REGISTRY[args.analyzer]
+        # dns_analyzer : DNSAnalyzer = analyzer_class()
         dns_analyzer.process_event(dns_query_event)
 
         """
@@ -62,24 +62,20 @@ if __name__ == "__main__":
 
     args = parse_args()
 
+    analyzer_class = ANALYZER_REGISTRY[args.analyzer]
+    dns_analyzer : DNSAnalyzer = analyzer_class()
+
     # ----------------------------
     # Chose derived classes once, write the same code later 
     writer   = CSVRuleWriter("blocked2.csv")
 
     analyzer = RecordAnalyzer(writer)
 
-    receiver = CSVRecordReceiver(path=args.input, on_recv=analyzer.analyze)
+    receiver = CSVRecordReceiver(path=args.input, on_recv=analyzer.analyze, dns_analyzer=dns_analyzer)
     # ----------------------------
 
     with receiver: 
         receiver.receive()
 
-
-
-
-
-
-
-
-
-
+    dns_analyzer.report()
+    print("All Done!")

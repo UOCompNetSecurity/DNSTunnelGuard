@@ -26,13 +26,16 @@ class EntropyDNSAnalyzer(DNSAnalyzer):
     
     def __init__(self) -> None:
         # TODO
+        self.domains = []
         print("Entropy DNS Analyzer")
 
     def process_event(self, dns_event_query: DNSQueryEvent) -> None:
+        self.domains.append(dns_event_query.qname)
         print(dns_event_query)
 
     def report(self) -> None:
-        pass
+        print("Report Placeholder")
+        print(self.domains)
 
 class TrafficDNSAnalyzer(DNSAnalyzer):
     """
