@@ -128,7 +128,8 @@ class BPFRecordReceiver(RecordReceiver):
         super().__init__(max_queue_size)
 
     def _push_record(self) -> bool: 
-        self.bpf_manager.poll_ringbuffer(1)
+        large_timeout = 99999999
+        self.bpf_manager.poll_ringbuffer(large_timeout) 
         return True 
 
 

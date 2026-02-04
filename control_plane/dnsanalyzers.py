@@ -1,22 +1,22 @@
 from dnseventschema import DNSQueryEvent
-import argparse
 
 class DNSAnalyzer():
     """
     Abstract Base Class for all types of DNS query analyzers
     """
 
-    def process_event (self, dns_event_query: DNSQueryEvent) -> None:
+    def process_event(self, dns_event_query: DNSQueryEvent) -> int:
         """
         Process and analyze one single DNS query
+        Returns weight of suspicion of being tunneling 
         """
-        pass
+        raise NotImplementedError("process event method not implemented")
 
-    def report (self) -> None:
+    def report(self) -> None:
         """
         Print and report actions and statistics based on analysis
         """
-        pass
+        raise NotImplementedError("report method implemented")
 
 
 class EntropyDNSAnalyzer(DNSAnalyzer):
@@ -28,11 +28,12 @@ class EntropyDNSAnalyzer(DNSAnalyzer):
         # TODO
         print("Entropy DNS Analyzer")
 
-    def process_event(self, dns_event_query: DNSQueryEvent) -> None:
+    def process_event(self, dns_event_query: DNSQueryEvent) -> int:
         print(dns_event_query)
+        return 0 
 
     def report(self) -> None:
-        pass
+        return 
 
 class TrafficDNSAnalyzer(DNSAnalyzer):
     """
@@ -43,10 +44,10 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
         # TODO
         print("Traffic DNS Analyzer")
 
-    def process_event(self, dns_event_query: DNSQueryEvent) -> None:
+    def process_event(self, dns_event_query: DNSQueryEvent) -> int:
         print(dns_event_query)
+        return 0 
 
     def report(self) -> None:
-        pass
-
+        return 
 

@@ -18,6 +18,8 @@ class DNSQType(Enum):
     PTR = 12   #Reverse DNS 
     CNAME = 5  #Canonical name 
 
+    TXT=16 # adding this for now just to see it in dns shell
+
 
 @dataclass(frozen=True)
 class DNSQueryEvent:
