@@ -10,7 +10,7 @@ def parse_analyzer_types(config: ConfigParser) -> list[DNSAnalyzer]:
         analyzers.append(EntropyDNSAnalyzer())
 
     if config['analyzer']['traffic'] == 'true': 
-        analyzers.append(TrafficDNSAnalyzer)
+        analyzers.append(TrafficDNSAnalyzer())
 
     return analyzers
 
