@@ -22,7 +22,7 @@ struct
 struct query_event
 {
     uint32_t ip_address; 
-    char     qname[MAX_QNAME_LEN];
+    char     query_data[MAX_QUERY_LEN];
 };
 
 /* Tunnel guard for outgoing traffic (egress) from the DNS resolver
@@ -72,11 +72,7 @@ int tunnel_guard_egress(struct __sk_buff* skb)
     }
     else if (ip_header->protocol == IPPROTO_TCP)
     {
-        struct tcphdr* tcp_header = transport_header;
-        if ((void*)tcp_header + sizeof(struct tcphdr) >= data_end)
-            return PASS;
-        dst_port   = tcp_header->dest;
-        dns_header = (void*)tcp_header + sizeof(struct tcphdr);
+        return DROP; // I dont want to deal with tcp rn 
     }
     else
     {
@@ -182,15 +178,20 @@ int tunnel_guard_egress(struct __sk_buff* skb)
     // case QTYPE_PTR:
     {
         /* Pass query to userspace for further inspection */ 
+
         struct query_event* event = bpf_ringbuf_reserve(&query_events, sizeof(struct query_event), 0); 
 
         if (!event)
             return DROP; 
 
-        event->ip_address = ip_addr; 
-        for (int i = 0; i < MAX_QNAME_LEN; i++)
-            event->qname[i] = full_qname[i];
+        event->ip_address = bpf_ntohl(ip_addr); 
+        for (int i = 0; i < MAX_QUERY_LEN; i++)
+        {
+            if (dns_header + i >= data_end)
+                break;
 
+            event->query_data[i] = ((char*)dns_header)[i];
+        }
         bpf_ringbuf_submit(event, 0);
 
         return PASS;

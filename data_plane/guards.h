@@ -10,6 +10,7 @@
 #define bpf_ntohs(x) __builtin_bswap16(x)
 #define ETH_P_IP 0x0800
 #define ETH_P_IPV6 0x86DD
+#define MAX_QUERY_LEN 508
 
 #define MAX_BLOCKED_LENGTH 10000
 #define DROP 0
@@ -28,6 +29,7 @@
 #define QTYPE_MX 15
 #define QTYPE_PTR 12
 #define QTYPE_CNAME 5
+
 
 struct
 {

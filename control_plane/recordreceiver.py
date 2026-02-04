@@ -5,11 +5,11 @@ import time
 from typing import Callable
 from dnslib import DNSRecord, DNSQuestion
 import csv 
-import datetime
-from dataclasses import dataclass 
+from datetime import datetime
+from bpfmanager import BPFManager 
+from dataclasses import dataclass
 
 DEFAULT_MAX_QUEUE_SIZE = 100_000
-
 
 @dataclass 
 class RecordEvent: 
@@ -17,7 +17,7 @@ class RecordEvent:
     Event for either query or response receival 
     """
     record: DNSRecord 
-    timestamp: datetime.datetime
+    timestamp: datetime
     src_ip_addr: str
 
 class RecordReceiver: 
@@ -44,12 +44,8 @@ class RecordReceiver:
         Begin the receive loop to receive records from source 
         """
         while True: 
-            record = self._receive_record()
-            if record is None: 
+            if not self._push_record(): 
                 break 
-            self._query_queue.put(record)
-        self._query_queue.put(None) # terminate recv thread 
-
 
     # ---------------- 
     # No need to use these if using "with" context
@@ -71,12 +67,13 @@ class RecordReceiver:
                 break 
             on_recv(query)
 
-    def _receive_record(self) -> RecordEvent | None: 
+    def _push_record(self) -> bool: 
         """
-        Implemented by derived class, return parsed RecordEvent or None if receiving is complete 
+        Implemented by derived class, pushes record onto the queue from the source
+        Returns True if more receiving can be done, False otherwise 
 
         """
-        raise NotImplementedError("_receive_record must be implemented by derived classes of DNSQueryReceiver")
+        raise NotImplementedError("_receive_record must be implemented by derived classes of RecordReceiver")
 
 
 class CSVRecordReceiver(RecordReceiver): 
@@ -95,20 +92,39 @@ class CSVRecordReceiver(RecordReceiver):
     def close(self): 
         self.csv_file.close()
 
-    def _receive_record(self) -> RecordEvent | None: 
+    def _push_record(self) -> bool: 
         if self.sleep_time is not None: 
             time.sleep(self.sleep_time)
 
         try: 
             row = next(self.csv_reader) 
         except StopIteration: 
-            return None
+            self._query_queue.put(None)
+            return False 
 
         qname, ip_addr = row
 
         record = DNSRecord(q=DNSQuestion(qname=qname))
 
-        return RecordEvent(record=record, timestamp=datetime.datetime.now(), src_ip_addr=ip_addr)
+        self._query_queue.put(RecordEvent(record=record, timestamp=datetime.now(), src_ip_addr=ip_addr))
+
+        return True 
+
+
+class BPFRecordReceiver(RecordReceiver): 
+    def __init__(self, bpf_manager: BPFManager, on_recv: Callable[[RecordEvent], None], max_queue_size=DEFAULT_MAX_QUEUE_SIZE): 
+        self.bpf_manager = bpf_manager 
+        self.bpf_manager.set_ringbuffer_callback(lambda ip_addr, query: self._query_queue.put(RecordEvent(src_ip_addr=ip_addr, 
+                                                                                                          record=query,
+                                                                                                          timestamp=datetime.now())))
+        super().__init__(on_recv, max_queue_size)
+
+    def _push_record(self) -> bool: 
+        self.bpf_manager.poll_ringbuffer(1)
+        return True 
+
+
+
 
 
 
