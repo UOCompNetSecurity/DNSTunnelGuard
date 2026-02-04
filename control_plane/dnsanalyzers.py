@@ -50,24 +50,3 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
         pass
 
 
-ANALYZER_REGISTRY = {
-    'entropy': EntropyDNSAnalyzer,
-    'traffic': TrafficDNSAnalyzer
-}
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="DNS Analysis Options")
-
-    parser.add_argument(
-        "--analyzer",
-        required=True,
-        choices=ANALYZER_REGISTRY.keys(),
-        help="Type of DNS analysis to use"
-    )
-
-    parser.add_argument(
-        "--input",
-        required=True,
-        help="Path to csv file containing sample DNS queries"
-    )
-    return parser.parse_args()
