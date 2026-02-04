@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     # ----------------------------
     # Chose derived classes once, write the same code later 
-    writer   = CSVRuleWriter("blocked.csv")
+    writer   = CSVRuleWriter("blocked2.csv")
 
     analyzer = RecordAnalyzer(writer)
 
