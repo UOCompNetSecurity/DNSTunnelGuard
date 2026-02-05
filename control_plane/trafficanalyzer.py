@@ -16,9 +16,11 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
         self.num_queries_for_domain = defaultdict(int)
 
 
+
     def analyze(self, dns_event_query: RecordEvent) -> int:
         return 2 
 
     def report(self) -> str:
         return ""
+
 
