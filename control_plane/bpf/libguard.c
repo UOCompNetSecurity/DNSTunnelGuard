@@ -8,12 +8,6 @@
 
 #define MAX_QNAME_LEN 32
 
-struct query_event
-{
-    uint32_t ip_address;
-    char     qname[MAX_QNAME_LEN];
-};
-
 int get_map_fd(const char* name)
 {
     int   map_fd = -1;
