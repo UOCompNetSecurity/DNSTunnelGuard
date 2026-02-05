@@ -4,8 +4,11 @@ from configparser import ConfigParser
 from guardconfig import parse_guard_types
 from analyzerconfig import parse_analyzer_types
 from guardcontroller import GuardController
+from loggingconfig import setup_logging
 import sys
 
+import logging
+logger = logging.getLogger(__name__)
 
 def main(): 
     parser = ArgumentParser(description="DNS Tunnel Guard Options")
@@ -35,21 +38,27 @@ def main():
     config = ConfigParser()
     config.read(config_path)
 
+    setup_logging(config)
+
     try: 
         record_receiver, firewall = parse_guard_types(args, config)
         analyzers = parse_analyzer_types(config)
 
     except Exception as e: 
-        print(f"Invalid configuration: {str(e)}")
+        logging.critical(f"Invalid configuration: {str(e)}")
         sys.exit(1)
 
-    guard_controller = GuardController(analyzers, firewall, sus_threshold=1, print_reports=True)
+    guard_controller = GuardController(analyzers, firewall, sus_threshold=1)
 
     record_receiver.set_on_recv(guard_controller.process_record)
 
-    with record_receiver: 
-        record_receiver.receive()
+    logger.info(f"Tunnel Guard Running using config -> {config_path}")
 
+    try: 
+        with record_receiver: 
+            record_receiver.receive()
+    except KeyboardInterrupt: 
+        pass
 
 if __name__ == "__main__": 
     main()
