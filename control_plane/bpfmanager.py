@@ -5,7 +5,6 @@ import socket
 import dnslib
 import os 
 from typing import Callable
-import datetime
 
 class BPFManager: 
     """

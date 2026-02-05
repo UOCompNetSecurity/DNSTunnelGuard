@@ -1,73 +1,45 @@
-from dnseventschema import DNSQueryEvent
-import argparse
+
+from recordevent import RecordEvent
 
 class DNSAnalyzer():
     """
     Abstract Base Class for all types of DNS query analyzers
     """
 
-    def process_event (self, dns_event_query: DNSQueryEvent) -> None:
+    def analyze(self, dns_event_query: RecordEvent) -> int:
         """
         Process and analyze one single DNS query
+        Returns weight of suspicion of being tunneling 
         """
-        pass
+        raise NotImplementedError("process event method not implemented")
 
-    def report (self) -> None:
+    def report(self) -> str:
         """
-        Print and report actions and statistics based on analysis
+        Return reported actions and statistics based on analysis
         """
-        pass
+        raise NotImplementedError("report method implemented")
 
 
 class EntropyDNSAnalyzer(DNSAnalyzer):
     """
     DNSAnalyzer child class that analyzes DNS query qnames for different levels of entropy (randomness)
     """
-    
-    def __init__(self) -> None:
-        # TODO
-        print("Entropy DNS Analyzer")
 
-    def process_event(self, dns_event_query: DNSQueryEvent) -> None:
-        print(dns_event_query)
+    def analyze(self, dns_event_query: RecordEvent) -> int:
+        return 2 
 
-    def report(self) -> None:
-        pass
+    def report(self) -> str:
+        return ""
 
 class TrafficDNSAnalyzer(DNSAnalyzer):
     """
     Placeholder for now
     """
 
-    def __init__(self) -> None:
-        # TODO
-        print("Traffic DNS Analyzer")
 
-    def process_event(self, dns_event_query: DNSQueryEvent) -> None:
-        print(dns_event_query)
+    def analyze(self, dns_event_query: RecordEvent) -> int:
+        return 2 
 
-    def report(self) -> None:
-        pass
+    def report(self) -> str:
+        return ""
 
-
-ANALYZER_REGISTRY = {
-    'entropy': EntropyDNSAnalyzer,
-    'traffic': TrafficDNSAnalyzer
-}
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="DNS Analysis Options")
-
-    parser.add_argument(
-        "--analyzer",
-        required=True,
-        choices=ANALYZER_REGISTRY.keys(),
-        help="Type of DNS analysis to use"
-    )
-
-    parser.add_argument(
-        "--input",
-        required=True,
-        help="Path to csv file containing sample DNS queries"
-    )
-    return parser.parse_args()

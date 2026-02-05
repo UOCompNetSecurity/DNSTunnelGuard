@@ -7,18 +7,9 @@ from dnslib import DNSRecord, DNSQuestion
 import csv 
 from datetime import datetime
 from bpfmanager import BPFManager 
-from dataclasses import dataclass
+from recordevent import RecordEvent
 
-DEFAULT_MAX_QUEUE_SIZE = 100_000
 
-@dataclass 
-class RecordEvent: 
-    """
-    Event for either query or response receival 
-    """
-    record: DNSRecord 
-    timestamp: datetime
-    src_ip_addr: str
 
 class RecordReceiver: 
     """
@@ -27,16 +18,23 @@ class RecordReceiver:
 
     """
 
-    def __init__(self, on_recv: Callable[[RecordEvent], None], max_queue_size=DEFAULT_MAX_QUEUE_SIZE): 
+    DEFAULT_MAX_QUEUE_SIZE = 100_000
+
+    def __init__(self, max_queue_size=DEFAULT_MAX_QUEUE_SIZE): 
         self._query_queue = queue.Queue(max_queue_size)
+        self._recv_thread = None
+
+
+    def set_on_recv(self, on_recv: Callable[[RecordEvent], None]): 
         self._recv_thread = threading.Thread(target=self._on_recv_worker, args=(on_recv,))
 
     def __enter__(self): 
-        self._recv_thread.start()
+        self.start_on_recv_thread()
         return self 
 
     def __exit__(self, exc_type, exc_value, traceback): 
-        self._recv_thread.join()
+        self._query_queue.put(None)
+        self.join_on_recv_thread()
         return False
 
     def receive(self): 
@@ -50,9 +48,13 @@ class RecordReceiver:
     # ---------------- 
     # No need to use these if using "with" context
     def start_on_recv_thread(self): 
+        if self._recv_thread is None: 
+            raise Exception("on_recv callback not set")
         self._recv_thread.start()
 
     def join_on_recv_thread(self): 
+        if self._recv_thread is None: 
+            raise Exception("on_recv callback not set")
         self._recv_thread.join()
     # --------------- 
 
@@ -78,12 +80,12 @@ class RecordReceiver:
 
 class CSVRecordReceiver(RecordReceiver): 
 
-    def __init__(self, path: str, on_recv: Callable[[RecordEvent], None], max_queue_size=DEFAULT_MAX_QUEUE_SIZE, sleep_time: float | None=None): 
+    def __init__(self, path: str, max_queue_size=RecordReceiver.DEFAULT_MAX_QUEUE_SIZE, sleep_time: float | None=None): 
         self.sleep_time = sleep_time
         self.csv_file = open(path, "r")
         self.csv_reader = csv.reader(self.csv_file)
         next(self.csv_reader) # skip the first line 
-        super().__init__(on_recv, max_queue_size)
+        super().__init__(max_queue_size)
 
     def __exit__(self, exc_type, exc_value, traceback): 
         self.csv_file.close()
@@ -112,15 +114,16 @@ class CSVRecordReceiver(RecordReceiver):
 
 
 class BPFRecordReceiver(RecordReceiver): 
-    def __init__(self, bpf_manager: BPFManager, on_recv: Callable[[RecordEvent], None], max_queue_size=DEFAULT_MAX_QUEUE_SIZE): 
+    def __init__(self, bpf_manager: BPFManager, max_queue_size=RecordReceiver.DEFAULT_MAX_QUEUE_SIZE): 
         self.bpf_manager = bpf_manager 
         self.bpf_manager.set_ringbuffer_callback(lambda ip_addr, query: self._query_queue.put(RecordEvent(src_ip_addr=ip_addr, 
                                                                                                           record=query,
                                                                                                           timestamp=datetime.now())))
-        super().__init__(on_recv, max_queue_size)
+        super().__init__(max_queue_size)
 
     def _push_record(self) -> bool: 
-        self.bpf_manager.poll_ringbuffer(1)
+        large_timeout = 99999999
+        self.bpf_manager.poll_ringbuffer(large_timeout) 
         return True 
 
 
