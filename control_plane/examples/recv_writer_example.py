@@ -16,30 +16,7 @@ class RecordAnalyzer():
         self.rule_writer = rule_writer 
 
     def analyze(self, event: RecordEvent, dns_analyzer: DNSAnalyzer):
-        # Grab the data to analyze from the record event
-        timestamp = event.timestamp
-        src_ip_addr = event.src_ip_addr
-        qname = event.record.questions[0].qname
-        qtype = event.record.questions[0].qtype
-
-        raw = event.record.pack()
-        query_size = len(raw)
-
-        edns_size = None
-        for rr in event.record.ar:
-            if isinstance(rr.data, EDNS0):
-                edns_size = rr.rdata.udp_len
-                break
-
-        # Build the query event object to pass along to analysis class method
-        dns_query_event = DNSQueryEvent(timestamp, src_ip_addr, str(qname), DNSQType(qtype), query_size, edns_size)
-        # print(dns_query_event)
-        
-        # TODO Dispatch analysis to the proper analysis class
-        # args = parse_args()
-        # analyzer_class = ANALYZER_REGISTRY[args.analyzer]
-        # dns_analyzer : DNSAnalyzer = analyzer_class()
-        dns_analyzer.process_event(dns_query_event)
+        dns_analyzer.analyze(event)
 
         """
         qname = event.record.questions[0].qname
@@ -78,4 +55,3 @@ if __name__ == "__main__":
         receiver.receive()
 
     dns_analyzer.report()
-    print("All Done!")

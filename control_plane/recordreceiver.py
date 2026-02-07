@@ -17,7 +17,7 @@ class RecordEvent:
     Event for either query or response receival 
     """
     record: DNSRecord 
-    timestamp: datetime.datetime
+    timestamp: datetime
     src_ip_addr: str
 
 class RecordReceiver: 
