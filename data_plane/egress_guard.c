@@ -168,14 +168,13 @@ int tunnel_guard_egress(struct __sk_buff* skb)
     /* Drop queries of unnallowed query types */
     switch (qtype)
     {
-    default: 
-    // case QTYPE_A:
-    // case QTYPE_AAAA:
-    // case QTYPE_CNAME:
-    // case QTYPE_MX:
-    // case QTYPE_NS:
-    // case QTYPE_SOA:
-    // case QTYPE_PTR:
+    case QTYPE_A:
+    case QTYPE_AAAA:
+    case QTYPE_CNAME:
+    case QTYPE_MX:
+    case QTYPE_NS:
+    case QTYPE_SOA:
+    case QTYPE_PTR:
     {
         /* Pass query to userspace for further inspection */ 
 
@@ -197,8 +196,8 @@ int tunnel_guard_egress(struct __sk_buff* skb)
         return PASS;
     }
 
-    // default:
-    //     return DROP;
+    default:
+        return DROP;
     }
 
     return PASS;
