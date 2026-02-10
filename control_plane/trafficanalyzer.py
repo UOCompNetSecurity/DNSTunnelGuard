@@ -14,16 +14,16 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
 
     """
 
-    def __init__(self, weight_percentage: float, ip_minute_distance_threshold: float, 
-                 domain_minute_distance_threshold: float,
+    def __init__(self, weight_percentage: float, ip_minute_difference_threshold: float, 
+                 domain_minute_difference_threshold: float,
                  num_queries_for_domain_threshold: int, num_queries_from_ip_threshold: int, 
                  ip_weight: float, domain_weight: float): 
         """
         weight_percentage: 
             Used to store weight percentage towards analyzer, not used in analyze calculation 
-        ip_minute_distance_threshold: 
+        ip_minute_difference_threshold: 
             The max threshold in minutes IP addresses should be kept in history
-        domain_minute_distance_threshold: 
+        domain_minute_difference_threshold: 
             The max threshold in minutes domains should be kept in history
         num_queries_threshold: 
             Number of queries needed for 100% suspicion for domain name reuse
@@ -37,8 +37,8 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
         """
 
         super().__init__(weight_percentage)
-        self.ip_minute_distance_threshold     = ip_minute_distance_threshold 
-        self.domain_minute_distance_threshold = domain_minute_distance_threshold
+        self.ip_minute_difference_threshold     = ip_minute_difference_threshold 
+        self.domain_minute_difference_threshold = domain_minute_difference_threshold
         self.ip_history     = defaultdict(list[datetime])
         self.domain_history = defaultdict(list[datetime])
         self.num_queries_for_domain_threshold = num_queries_for_domain_threshold 
@@ -90,26 +90,20 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
 
     def _reap_old_queries(self, sub_domains: list[str], ip_address: str): 
         """
-        Remove queries greater than the old query threshold set on configuration 
+        Remove queries greater than the max time difference threshold set in constructor
 
         """
         now = datetime.now()
         for domain in sub_domains: 
-            to_slice = 0
             for i, timestamp in enumerate(self.domain_history[domain]): 
-                if (timestamp - now).total_seconds() / 60 < self.domain_minute_distance_threshold: 
-                    to_slice = i
+                if (timestamp - now).total_seconds() / 60 < self.domain_minute_difference_threshold: 
+                    self.domain_history[domain] = self.domain_history[domain][i:]
                     break 
 
-            self.domain_history[domain] = self.domain_history[domain][to_slice:]
-
-        to_slice = 0
         for i, timestamp in enumerate(self.ip_history[ip_address]): 
-            if (timestamp  - now).total_seconds() / 60 < self.ip_minute_distance_threshold: 
-                to_slice = i
+            if (timestamp  - now).total_seconds() / 60 < self.ip_minute_difference_threshold: 
+                self.ip_history[ip_address] = self.ip_history[ip_address][i:]
                 break 
-
-        self.ip_history[ip_address] = self.ip_history[ip_address][to_slice:]
 
 
     def report(self) -> str:
