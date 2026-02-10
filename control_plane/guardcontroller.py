@@ -28,7 +28,7 @@ class GuardController:
         sus_percentage = 0.0 
 
         for analyzer in self.analyzers: 
-            sus_percentage += analyzer.analyze(event)
+            sus_percentage += analyzer.analyze(event) * analyzer.weight_percentage
             logging.info("Analyzer Report: " + analyzer.report())
 
         if sus_percentage >= self.sus_percentage_threshold: 

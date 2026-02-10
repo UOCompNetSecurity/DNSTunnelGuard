@@ -6,6 +6,9 @@ class DNSAnalyzer():
     Abstract Base Class for all types of DNS query analyzers
     """
 
+    def __init__(self, weight_percentage: float): 
+        self.weight_percentage = weight_percentage
+
     def analyze(self, dns_event_query: RecordEvent) -> float:
         """
         Process and analyze one single DNS query

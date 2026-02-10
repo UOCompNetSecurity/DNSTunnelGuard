@@ -14,13 +14,13 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
 
     """
 
-    def __init__(self, max_weight: float, ip_minute_distance_threshold: float, 
+    def __init__(self, weight_percentage: float, ip_minute_distance_threshold: float, 
                  domain_minute_distance_threshold: float,
                  num_queries_for_domain_threshold: int, num_queries_from_ip_threshold: int, 
                  ip_weight: float, domain_weight: float): 
         """
-        max_weight: 
-            Maximum suspicion weight this analyzer can output. The suspicion is scaled by this value 
+        weight_percentage: 
+            Used to store weight percentage towards analyzer, not used in analyze calculation 
         ip_minute_distance_threshold: 
             The max threshold in minutes IP addresses should be kept in history
         domain_minute_distance_threshold: 
@@ -36,11 +36,11 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
 
         """
 
+        super().__init__(weight_percentage)
         self.ip_minute_distance_threshold     = ip_minute_distance_threshold 
         self.domain_minute_distance_threshold = domain_minute_distance_threshold
         self.ip_history     = defaultdict(list[datetime])
         self.domain_history = defaultdict(list[datetime])
-        self.max_sus_weight = max_weight 
         self.num_queries_for_domain_threshold = num_queries_for_domain_threshold 
         self.num_queries_from_ip_threshold = num_queries_from_ip_threshold
         self.ip_sus_weight = ip_weight 
@@ -86,7 +86,7 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
         sus_percentage = (ip_sus_percentage * self.ip_sus_weight) + \
                          (max_domain_sus_percentage * self.domain_sus_weight)
 
-        return min(1.0, sus_percentage) * self.max_sus_weight
+        return min(1.0, sus_percentage)
 
 
 

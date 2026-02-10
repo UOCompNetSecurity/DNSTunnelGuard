@@ -9,11 +9,12 @@ def parse_analyzer_types(config: ConfigParser) -> list[DNSAnalyzer]:
     analyzers = []
 
     if config['analyzer']['entropy'] == 'true': 
-        analyzers.append(EntropyDNSAnalyzer())
+        entropy_config = config['entropyanalyzer']
+        analyzers.append(EntropyDNSAnalyzer(weight_percentage=float(entropy_config["weight_percentage"])))
 
     if config['analyzer']['traffic'] == 'true': 
         traffic_config = config['trafficanalyzer']
-        analyzers.append(TrafficDNSAnalyzer(max_weight=float(traffic_config["max_weight"]), 
+        analyzers.append(TrafficDNSAnalyzer(weight_percentage=float(traffic_config["weight_percentage"]), 
                                             ip_minute_distance_threshold= 
                                                 float(traffic_config["ip_minute_distance_threshold"]), 
                                             domain_minute_distance_threshold=
