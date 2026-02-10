@@ -48,7 +48,7 @@ def main():
         logging.critical(f"Invalid configuration: {str(e)}")
         sys.exit(1)
 
-    guard_controller = GuardController(analyzers, firewall, sus_threshold=1)
+    guard_controller = GuardController(analyzers, firewall, sus_percentage_threshold=float(config["analyzer"]["sus_percentage_threshold"]))
 
     record_receiver.set_on_recv(guard_controller.process_record)
 

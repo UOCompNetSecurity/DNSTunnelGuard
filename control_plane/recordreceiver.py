@@ -84,7 +84,6 @@ class CSVRecordReceiver(RecordReceiver):
         self.sleep_time = sleep_time
         self.csv_file = open(path, "r")
         self.csv_reader = csv.reader(self.csv_file)
-        next(self.csv_reader) # skip the first line 
         super().__init__(max_queue_size)
 
     def __exit__(self, exc_type, exc_value, traceback): 
