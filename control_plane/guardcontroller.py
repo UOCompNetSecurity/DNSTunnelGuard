@@ -10,11 +10,21 @@ logger = logging.getLogger(__name__)
 class GuardController: 
     """
     Manages analyzers and firewall to dispatch the different analyizers and block the IP and domain 
-    if these analyzers find the queriy suspicious
+    if these analyzers find the query suspicious
 
     """
 
     def __init__(self, analyzers: list[DNSAnalyzer], firewall: Firewall, sus_percentage_threshold: float): 
+        """
+        analyzers: 
+            List of analyzers to analyze each query 
+        firewall:
+            firewall used to block IP's and domains 
+        sus_percentage_threshold: 
+            Percentage that if a query exceeds this sus threshold, the srouce IP address and domain queried 
+            for are blocked 
+
+        """
         self.analyzers = analyzers
         self.firewall = firewall
         self.sus_percentage_threshold = sus_percentage_threshold

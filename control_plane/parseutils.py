@@ -14,6 +14,9 @@ def parse_qname_no_tld(qname: str) -> list[str]:
     return [".".join(domains[i:]) for i in range(len(domains))]
 
 def tld(qname: str) -> str: 
+    """
+    Get the top level domain of a full domain name
+    """
     domains = qname.split('.')
 
     if len(domains) <= 1: 
