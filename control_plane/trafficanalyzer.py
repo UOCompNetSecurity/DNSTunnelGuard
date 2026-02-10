@@ -51,9 +51,7 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
         """
         Analyze a query based on traffic history for the domains and source IP address
 
-        Returns a weighted suspicion value, based on constructor config 
-
-        The weighted value will not exceed max_sus_weight
+        Returns an unweighted suspicion percentage
         
         """
 
