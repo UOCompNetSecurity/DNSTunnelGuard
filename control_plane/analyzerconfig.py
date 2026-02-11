@@ -10,7 +10,8 @@ def parse_analyzer_types(config: ConfigParser) -> list[DNSAnalyzer]:
 
     if config['analyzer']['entropy'] == 'true': 
         entropy_config = config['entropyanalyzer']
-        analyzers.append(EntropyDNSAnalyzer(weight_percentage=float(entropy_config["weight_percentage"])))
+        analyzers.append(EntropyDNSAnalyzer(weight_percentage=float(entropy_config["weight_percentage"]),
+                                            max_entropy=float(entropy_config["max_entropy"])))
 
     if config['analyzer']['traffic'] == 'true': 
         traffic_config = config['trafficanalyzer']
