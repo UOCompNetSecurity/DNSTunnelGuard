@@ -11,7 +11,7 @@ class EntropyDNSAnalyzer(DNSAnalyzer):
     """
 
     def __init__(self, weight_percentage : float, max_entropy : float) -> None:
-        super.__init__(weight_percentage)
+        super().__init__(weight_percentage)
         self.max_entropy = max_entropy
 
     def analyze(self, dns_event_query: RecordEvent) -> float:
