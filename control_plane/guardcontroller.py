@@ -2,6 +2,7 @@
 from dnsanalyzers import DNSAnalyzer 
 from recordevent import RecordEvent
 from firewall import Firewall
+import parseutils
 
 import logging
 logger = logging.getLogger(__name__)
@@ -9,14 +10,24 @@ logger = logging.getLogger(__name__)
 class GuardController: 
     """
     Manages analyzers and firewall to dispatch the different analyizers and block the IP and domain 
-    if these analyzers find the queriy suspicious
+    if these analyzers find the query suspicious
 
     """
 
-    def __init__(self, analyzers: list[DNSAnalyzer], firewall: Firewall, sus_threshold: int): 
+    def __init__(self, analyzers: list[DNSAnalyzer], firewall: Firewall, sus_percentage_threshold: float): 
+        """
+        analyzers: 
+            List of analyzers to analyze each query 
+        firewall:
+            firewall used to block IP's and domains 
+        sus_percentage_threshold: 
+            Percentage that if a query exceeds this sus threshold, the srouce IP address and domain queried 
+            for are blocked 
+
+        """
         self.analyzers = analyzers
         self.firewall = firewall
-        self.sus_threshold = sus_threshold
+        self.sus_percentage_threshold = sus_percentage_threshold
 
     def process_record(self, event: RecordEvent): 
         """
@@ -24,34 +35,26 @@ class GuardController:
         """
         logging.debug(f"Processing Query {event}")
 
-        sus_weight = 0 
+        sus_percentage = 0.0 
 
         for analyzer in self.analyzers: 
-            sus_weight += analyzer.analyze(event)
+            sus_percentage += analyzer.analyze(event) * analyzer.weight_percentage
             logging.info("Analyzer Report: " + analyzer.report())
 
-        if sus_weight > self.sus_threshold: 
+        if sus_percentage >= self.sus_percentage_threshold: 
 
             self.firewall.block_ip_address(event.src_ip_addr)
             for q in event.record.questions: 
                 logging.warning(f"Suspicious query detected, blocking domain: {str(q.qname)} from IP address: {event.src_ip_addr}")
 
-                sub_domains = self._parse_qname(str(q.qname))
+                sub_domains = parseutils.parse_qname_no_tld(str(q.qname))
+                tld = parseutils.tld(str(q.qname))
 
                 for sub_domain in sub_domains: 
-                    self.firewall.block_domain(sub_domain)
+                    self.firewall.block_domain(f"{sub_domain}.{tld}")
 
 
 
-    def _parse_qname(self, qname: str) -> list[str]: 
-        domain = qname.split('.')
-
-        if not domain[-1]: 
-            domain.pop()
-
-        domain.pop()
-
-        return domain 
 
 
 

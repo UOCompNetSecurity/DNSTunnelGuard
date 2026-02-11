@@ -6,7 +6,10 @@ class DNSAnalyzer():
     Abstract Base Class for all types of DNS query analyzers
     """
 
-    def analyze(self, dns_event_query: RecordEvent) -> int:
+    def __init__(self, weight_percentage: float): 
+        self.weight_percentage = weight_percentage
+
+    def analyze(self, dns_event_query: RecordEvent) -> float:
         """
         Process and analyze one single DNS query
         Returns weight of suspicion of being tunneling 
@@ -17,6 +20,6 @@ class DNSAnalyzer():
         """
         Return reported actions and statistics based on analysis
         """
-        raise NotImplementedError("report method implemented")
+        raise NotImplementedError("report method not implemented")
 
 
