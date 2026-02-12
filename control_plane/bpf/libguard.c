@@ -6,8 +6,19 @@
 #include <string.h>
 #include <unistd.h>
 
+
+/* Dynamic library to be used by the control plane to interact with BPF maps 
+ * This seemed easier to reduce the ammount of python ctypes use 
+ *
+ *
+ *
+ */ 
+
 #define MAX_QNAME_LEN 32
 
+/* Get the file descriptor given a BPF map name
+ *
+ */ 
 int get_map_fd(const char* name)
 {
     int   map_fd = -1;
@@ -35,14 +46,23 @@ int get_map_fd(const char* name)
     return map_fd;
 }
 
+/* Update the blocked IP address map given its file descriptor 
+ * with an IP address to block 
+ */
 int map_ip(int fd, uint32_t ip_addr)
 {
     int blocked = 1;
     return bpf_map_update_elem(fd, &ip_addr, &blocked, BPF_ANY);
 }
 
+/* Update the blocked IP address map given its file descriptor 
+ * with an IP address to unblock 
+ */
 int unmap_ip(int fd, uint32_t ip_addr) { return bpf_map_delete_elem(fd, &ip_addr); }
 
+/* Update the blocked domain map given its file descriptor 
+ * with an domain to block 
+ */
 int map_domain(int fd, char* domain_name)
 {
     char key[MAX_QNAME_LEN] = {0};
@@ -52,6 +72,9 @@ int map_domain(int fd, char* domain_name)
     return bpf_map_update_elem(fd, key, &blocked, BPF_ANY);
 }
 
+/* Update the blocked domain map given its file descriptor 
+ * with an domain to unblock 
+ */
 int unmap_domain(int fd, char* domain)
 {
     char key[MAX_QNAME_LEN] = {0};
@@ -59,10 +82,13 @@ int unmap_domain(int fd, char* domain)
     return bpf_map_delete_elem(fd, key);
 }
 
-/* Ring buffer state */  
+/* Ring buffer state for query events */  
 struct ring_buffer* query_rb = NULL; 
 int (*rb_callback)(void* ctx, void* data, size_t size) = NULL;
 
+/* Create the ring buffer for query events given the ringbuffers file descriptor 
+ * and a callback on query receivel
+ */
 int create_ringbuffer(int fd, int (*callback)(void* ctx, void* data, size_t size))
 {
     rb_callback = callback; 
@@ -72,6 +98,9 @@ int create_ringbuffer(int fd, int (*callback)(void* ctx, void* data, size_t size
     return 0; 
 }
 
+/* If a query exists, call the stored callback on the query 
+ * Wait a specified timeout before unblocking. Pass in a large number for long blocking 
+ */
 void poll_ringbuffer(int timeout)
 {
     ring_buffer__poll(query_rb, timeout);
