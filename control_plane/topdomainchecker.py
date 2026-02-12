@@ -1,5 +1,6 @@
 
 
+
 from dnsanalyzers import WhitelistDNSChecker
 from recordevent import RecordEvent
 
@@ -14,5 +15,7 @@ class TopDomainsDNSChecker(WhitelistDNSChecker):
 
     def is_benign(self, dns_event_query: RecordEvent) -> bool: 
         return True
+
+
 
 

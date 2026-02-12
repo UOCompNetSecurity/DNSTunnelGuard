@@ -1,4 +1,6 @@
 
+import struct
+import socket 
 
 def parse_qname_no_tld(qname: str) -> list[str]: 
     """
@@ -27,6 +29,25 @@ def tld(qname: str) -> str:
         return domains[-1]
     else: 
         return domains[-2]
+
+
+
+def ip_to_wire(ip_addr: str): 
+    ip_bytes = socket.inet_pton(socket.AF_INET, ip_addr)
+    return struct.unpack("I", ip_bytes)[0]
+
+def domain_to_wire(domain: str) -> bytes: 
+    domains = domain.split('.')
+
+    wire_domain = b""
+
+    for d in domains: 
+        wire_domain += len(d).to_bytes(1)
+        wire_domain += d.encode("utf-8")
+
+    wire_domain += b"\x00"
+    return wire_domain
+
 
 
 

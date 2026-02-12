@@ -1,10 +1,10 @@
 
 import ctypes
-import struct 
 import socket 
 import dnslib
 import os 
 from typing import Callable
+from parseutils import domain_to_wire, ip_to_wire
 
 class BPFManager: 
     """
@@ -37,19 +37,19 @@ class BPFManager:
 
 
     def map_ip(self, ip: str): 
-        if self.bpf.map_ip(self._ip_map_fd, self._ip_to_wire(ip)) < 0: 
+        if self.bpf.map_ip(self._ip_map_fd, ip_to_wire(ip)) < 0: 
             raise Exception(f"Failed to map IP {ip}")
 
     def unmap_ip(self, ip: str): 
-        if self.bpf.unmap_ip(self._ip_map_fd, self._ip_to_wire(ip)) < 0: 
+        if self.bpf.unmap_ip(self._ip_map_fd, ip_to_wire(ip)) < 0: 
             raise Exception(f"Failed to unmap IP {ip}")
 
     def map_domain(self, domain: str): 
-        if self.bpf.map_domain(self._domain_map_fd, self._domain_to_wire(domain)) < 0: 
+        if self.bpf.map_domain(self._domain_map_fd, domain_to_wire(domain)) < 0: 
             raise Exception(f"Failed to map domain {domain}")
 
     def unmap_domain(self, domain: str): 
-        if self.bpf.unmap_domain(self._domain_map_fd, self._domain_to_wire(domain)) < 0: 
+        if self.bpf.unmap_domain(self._domain_map_fd, domain_to_wire(domain)) < 0: 
             raise Exception(f"Failed to unmap domain {domain}")
 
     def set_ringbuffer_callback(self, callback: Callable[[str, dnslib.DNSRecord], None]): 
@@ -73,25 +73,6 @@ class BPFManager:
 
     def poll_ringbuffer(self, timeout: int): 
         self.bpf.poll_ringbuffer(self._ringbuffer_fd, timeout)
-
-    def _ip_to_wire(self, ip_addr: str): 
-        ip_bytes = socket.inet_pton(socket.AF_INET, ip_addr)
-        return struct.unpack("I", ip_bytes)[0]
-
-    def _domain_to_wire(self, domain: str) -> bytes: 
-        domains = domain.split('.')
-
-        wire_domain = b""
-
-        for d in domains: 
-            wire_domain += len(d).to_bytes(1)
-            wire_domain += d.encode("utf-8")
-
-        wire_domain += b"\x00"
-        return wire_domain
-
-
-
 
 
 
