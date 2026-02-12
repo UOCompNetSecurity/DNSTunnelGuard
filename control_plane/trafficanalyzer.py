@@ -37,6 +37,7 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
         """
 
         super().__init__(weight_percentage)
+        assert num_queries_for_domain_threshold > 0 and num_queries_from_ip_threshold > 0
         self.ip_minute_difference_threshold     = ip_minute_difference_threshold 
         self.domain_minute_difference_threshold = domain_minute_difference_threshold
         self.ip_history     = defaultdict(list[datetime])
@@ -85,7 +86,6 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
                          (max_domain_sus_percentage * self.domain_sus_weight)
 
         return min(1.0, sus_percentage)
-
 
 
     def _reap_old_queries(self, sub_domains: list[str], ip_address: str): 

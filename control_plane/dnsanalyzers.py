@@ -23,3 +23,4 @@ class DNSAnalyzer():
         raise NotImplementedError("report method not implemented")
 
 
+
