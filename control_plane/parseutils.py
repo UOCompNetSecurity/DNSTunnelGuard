@@ -4,14 +4,15 @@ def parse_qname_no_tld(qname: str) -> list[str]:
     """
     Splits a qname into parts, excludes the top level domain 
     """
+    if not qname: 
+        return []
     domains = qname.split('.')
 
-    if not domains[-1]: 
-        domains.pop()
+    split = [".".join(domains[i:]) for i in range(len(domains)) if domains[i]]
 
-    domains.pop()
+    split.pop() # pop tld 
 
-    return [".".join(domains[i:]) for i in range(len(domains))]
+    return split
 
 def tld(qname: str) -> str: 
     """

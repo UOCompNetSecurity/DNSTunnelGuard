@@ -1,5 +1,5 @@
 
-from dnsanalyzers import DNSAnalyzer 
+from dnsanalyzers import DNSAnalyzer, WhitelistDNSChecker 
 from recordevent import RecordEvent
 from firewall import Firewall
 import parseutils
@@ -14,7 +14,11 @@ class GuardController:
 
     """
 
-    def __init__(self, analyzers: list[DNSAnalyzer], firewall: Firewall, sus_percentage_threshold: float): 
+    def __init__(self, 
+                 checkers: list[WhitelistDNSChecker], 
+                 analyzers: list[DNSAnalyzer], 
+                 firewall: Firewall, 
+                 sus_percentage_threshold: float): 
         """
         analyzers: 
             List of analyzers to analyze each query 
@@ -25,6 +29,7 @@ class GuardController:
             for are blocked 
 
         """
+        self.checkers = checkers
         self.analyzers = analyzers
         self.firewall = firewall
         self.sus_percentage_threshold = sus_percentage_threshold
@@ -34,6 +39,11 @@ class GuardController:
         Callback to be used on every record event 
         """
         logging.debug(f"Processing Query {event}")
+
+        for checker in self.checkers: 
+            if checker.is_benign(event): 
+                logging.debug("Query found benign")
+                return 
 
         sus_percentage = 0.0 
 
