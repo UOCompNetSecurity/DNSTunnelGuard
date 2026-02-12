@@ -65,6 +65,9 @@ def test_domain_analyzer_half_suspicious(event: RecordEvent):
 
 
 def test_even_split_analyer_full_suspicious(event: RecordEvent): 
+    """
+    Test an even split of domain and IP suspicion for a total of 100% suspicion 
+    """
     even_split_analyzer = get_default_traffic_analyzer(0.5, 0.5)
     sus_level = 0
     for _ in range(2): 
@@ -73,11 +76,18 @@ def test_even_split_analyer_full_suspicious(event: RecordEvent):
 
 
 def test_even_split_analyer_half_suspicious(event: RecordEvent): 
+    """
+    Test an even split of domain and IP suspicion for a total of 50% suspicion
+    """
     even_split_analyzer = get_default_traffic_analyzer(0.5, 0.5)
     sus_level = even_split_analyzer.analyze(event)
     assert sus_level == 0.5
 
 def test_even_split_over_suspicious(event: RecordEvent): 
+    """
+    Test the 100% cap of total suspicion
+    
+    """
     even_split_analyzer = get_default_traffic_analyzer(0.5, 0.5)
     sus_level = 0
     for _ in range(3): 
@@ -87,6 +97,9 @@ def test_even_split_over_suspicious(event: RecordEvent):
 
 
 def test_ip_reaping(event: RecordEvent): 
+    """
+    Test that old IP addresses are removed given a minute difference threshold 
+    """
     analyzer = TrafficDNSAnalyzer(weight_percentage=1, 
                                   ip_minute_difference_threshold=0.001,
                                   domain_minute_difference_threshold=5, 
@@ -95,6 +108,7 @@ def test_ip_reaping(event: RecordEvent):
                                   ip_weight=1, 
                                   domain_weight=0)
 
+    # update the timestamp each time an event is analyzed 
     first_event = dataclasses.replace(event, timestamp=datetime.now())
 
     second_event = dataclasses.replace(event, timestamp=datetime.now())
@@ -115,6 +129,9 @@ def test_ip_reaping(event: RecordEvent):
 
 
 def test_domain_reaping(event: RecordEvent): 
+    """
+    Test that old domains are removed given a minute difference threshold 
+    """
     analyzer = TrafficDNSAnalyzer(weight_percentage=1, 
                                   ip_minute_difference_threshold=0.001,
                                   domain_minute_difference_threshold=0.001, 
