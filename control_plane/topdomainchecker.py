@@ -1,10 +1,10 @@
 
 
 
-from dnsanalyzers import WhitelistDNSChecker
+from dnsanalyzers import DNSChecker
 from recordevent import RecordEvent
 
-class TopDomainsDNSChecker(WhitelistDNSChecker): 
+class TopDomainsDNSChecker(DNSChecker): 
     """
     Uses CSV list of top safe domain names. Can prove a query is not suspicious 
 

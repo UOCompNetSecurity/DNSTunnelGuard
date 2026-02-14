@@ -1,7 +1,7 @@
 
 
 from configparser import ConfigParser
-from dnsanalyzers import DNSAnalyzer, WhitelistDNSChecker 
+from dnsanalyzers import DNSAnalyzer, DNSChecker 
 from trafficanalyzer import TrafficDNSAnalyzer
 from entropyanalyzer import EntropyDNSAnalyzer
 from topdomainchecker import TopDomainsDNSChecker
@@ -36,7 +36,7 @@ def parse_analyzer_types(config: ConfigParser) -> list[DNSAnalyzer]:
     return analyzers
 
 
-def parse_checker_types(config: ConfigParser) -> list[WhitelistDNSChecker]: 
+def parse_checker_types(config: ConfigParser) -> list[DNSChecker]: 
 
     checkers = []
 
