@@ -1,5 +1,5 @@
 
-from dnsanalyzers import DNSAnalyzer, WhitelistDNSChecker 
+from dnsanalyzers import DNSAnalyzer, DNSChecker 
 from recordevent import RecordEvent
 from firewall import Firewall
 import parseutils
@@ -15,7 +15,7 @@ class GuardController:
     """
 
     def __init__(self, 
-                 checkers: list[WhitelistDNSChecker], 
+                 checkers: list[DNSChecker], 
                  analyzers: list[DNSAnalyzer], 
                  firewall: Firewall, 
                  sus_percentage_threshold: float): 

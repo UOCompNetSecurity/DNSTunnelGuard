@@ -25,9 +25,9 @@ class DNSAnalyzer:
 
 
 
-class WhitelistDNSChecker: 
+class DNSChecker: 
     """
-    DNS analyzers that have the power to rule a domain 100% unsuspicious 
+    DNS checkers have the power to rule a domain 100% unsuspicious 
     and pass through without further inspection 
 
     """

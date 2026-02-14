@@ -1,20 +1,24 @@
 
 
 from configparser import ConfigParser
-from dnsanalyzers import DNSAnalyzer, WhitelistDNSChecker 
+from dnsanalyzers import DNSAnalyzer, DNSChecker 
 from trafficanalyzer import TrafficDNSAnalyzer
 from entropyanalyzer import EntropyDNSAnalyzer
 from topdomainchecker import TopDomainsDNSChecker
+import logging
+logger = logging.getLogger(__name__)
 
 def parse_analyzer_types(config: ConfigParser) -> list[DNSAnalyzer]: 
     analyzers = []
 
     if config['analyzer']['entropy'] == 'true': 
+        logger.info("Initializing entropy analyzer")
         entropy_config = config['entropyanalyzer']
         analyzers.append(EntropyDNSAnalyzer(weight_percentage=float(entropy_config["weight_percentage"]),
                                             max_entropy=float(entropy_config["max_entropy"])))
 
     if config['analyzer']['traffic'] == 'true': 
+        logger.info("Initializing traffic analyzer")
         traffic_config = config['trafficanalyzer']
         analyzers.append(TrafficDNSAnalyzer(weight_percentage=float(traffic_config["weight_percentage"]), 
                                             ip_minute_difference_threshold= 
@@ -32,11 +36,12 @@ def parse_analyzer_types(config: ConfigParser) -> list[DNSAnalyzer]:
     return analyzers
 
 
-def parse_checker_types(config: ConfigParser) -> list[WhitelistDNSChecker]: 
+def parse_checker_types(config: ConfigParser) -> list[DNSChecker]: 
 
     checkers = []
 
     if config['checker']['top_domains_list_checker'] == 'true': 
+        logger.info("Initializing top domains list checker")
         domain_list_config = config['top_domains_list_checker']
         checkers.append(TopDomainsDNSChecker(csv_path=domain_list_config["domain_list_csv_path"]))
 
