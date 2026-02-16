@@ -152,6 +152,8 @@ def parse_blacklist(config: ConfigParser) -> DomainList:
     return DomainList(config["domain_blacklist"]["path"])
 
 
+def parse_percentage_threshold(config: ConfigParser) -> float: 
+    return float(config["analyzer"]["sus_percentage_threshold"])
 
 
 

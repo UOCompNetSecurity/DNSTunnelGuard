@@ -45,7 +45,8 @@ def main():
         analyzers = guardconfig.parse_analyzer_types(config)
         whitelists = guardconfig.parse_dns_whitelist_types(config)
         tld_list = guardconfig.parse_tld_list(config)
-        sus_percentage_threshold = float(config["analyzer"]["sus_percentage_threshold"])
+        sus_percentage_threshold = guardconfig.parse_percentage_threshold(config)
+        sus_percentage_threshold = guardconfig.parse_percentage_threshold(config)
         blacklist = guardconfig.parse_blacklist(config)
 
     except Exception as e: 
