@@ -1,5 +1,6 @@
 
-from dnsanalyzers import DNSAnalyzer, DNSChecker 
+from dnsanalyzers import DNSAnalyzer 
+from dnslist import DNSList
 from recordevent import RecordEvent
 from firewall import Firewall
 import parseutils
@@ -15,10 +16,11 @@ class GuardController:
     """
 
     def __init__(self, 
-                 checkers: list[DNSChecker], 
+                 whitelists: list[DNSList], 
                  analyzers: list[DNSAnalyzer], 
                  firewall: Firewall, 
-                 sus_percentage_threshold: float): 
+                 sus_percentage_threshold: float, 
+                 tld_list: DNSList | None):
         """
         analyzers: 
             List of analyzers to analyze each query 
@@ -27,23 +29,28 @@ class GuardController:
         sus_percentage_threshold: 
             Percentage that if a query exceeds this sus threshold, the srouce IP address and domain queried 
             for are blocked 
+        tld_checker: 
+            CSV checker that can tell if a sub domain is a TLD 
 
         """
-        self.checkers = checkers
+        self.whitelists = whitelists
         self.analyzers = analyzers
         self.firewall = firewall
         self.sus_percentage_threshold = sus_percentage_threshold
+        self.tld_list = tld_list
 
     def process_record(self, event: RecordEvent): 
         """
         Callback to be used on every record event 
         """
         logging.debug(f"Processing Query {event}")
+        qnames = [str(question.qname) for question in event.record.questions]
 
-        for checker in self.checkers: 
-            if checker.is_benign(event): 
-                logging.debug("Query found benign")
-                return 
+        for wl in self.whitelists: 
+            for q in qnames: 
+                if wl.has_domain(q): 
+                    logging.debug("Query found benign")
+                    return 
 
         sus_percentage = 0.0 
 
@@ -54,14 +61,15 @@ class GuardController:
         if sus_percentage >= self.sus_percentage_threshold: 
 
             self.firewall.block_ip_address(event.src_ip_addr)
-            for q in event.record.questions: 
-                logging.warning(f"Suspicious query detected, blocking domain: {str(q.qname)} from IP address: {event.src_ip_addr}")
+            for q in qnames: 
+                logging.warning(f"Suspicious query detected, blocking domain: {str(q)} from IP address: {event.src_ip_addr}")
 
-                sub_domains = parseutils.parse_qname_no_tld(str(q.qname))
-                tld = parseutils.tld(str(q.qname))
+                sub_domains = parseutils.split_labels(q)
 
                 for sub_domain in sub_domains: 
-                    self.firewall.block_domain(f"{sub_domain}.{tld}")
+                    # do not block listed top level domains 
+                    if self.tld_list is None or not self.tld_list.has_domain(sub_domain): 
+                        self.firewall.block_domain(sub_domain)
 
 
 

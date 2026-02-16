@@ -1,10 +1,8 @@
 
 from argparse import ArgumentParser
 from configparser import ConfigParser
-from guardconfig import parse_guard_types
-from analyzerconfig import parse_analyzer_types, parse_checker_types
 from guardcontroller import GuardController
-from loggingconfig import setup_logging
+import guardconfig
 import sys
 
 import logging
@@ -38,19 +36,24 @@ def main():
     config = ConfigParser()
     config.read(config_path)
 
-    setup_logging(config)
+    guardconfig.setup_logging(config)
 
     try: 
-        record_receiver, firewall = parse_guard_types(args, config)
-        analyzers = parse_analyzer_types(config)
-        checkers = parse_checker_types(config)
+        record_receiver, firewall = guardconfig.parse_guard_types(args, config)
+        analyzers = guardconfig.parse_analyzer_types(config)
+        whitelists = guardconfig.parse_dns_whitelist_types(config)
+        tld_list = guardconfig.parse_tld_list(config)
+        sus_percentage_threshold = float(config["analyzer"]["sus_percentage_threshold"])
 
     except Exception as e: 
         logging.critical(f"Invalid configuration: {str(e)}")
         sys.exit(1)
 
-    guard_controller = GuardController(checkers, analyzers, firewall, 
-                                       sus_percentage_threshold=float(config["analyzer"]["sus_percentage_threshold"]))
+    guard_controller = GuardController(whitelists=whitelists, 
+                                       analyzers=analyzers, 
+                                       firewall=firewall, 
+                                       sus_percentage_threshold=sus_percentage_threshold, 
+                                       tld_list=tld_list)
 
     record_receiver.set_on_recv(guard_controller.process_record)
 

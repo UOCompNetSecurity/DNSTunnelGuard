@@ -60,24 +60,21 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
         """
 
         ip_address = dns_event_query.src_ip_addr
-        sub_domains = []
+        domains = []
         for question in dns_event_query.record.questions: 
             qname = str(question.qname)
 
-            domains = parseutils.parse_qname_no_tld(qname)
+            self.domain_history[qname].append(dns_event_query.timestamp)
+            self.ip_history[ip_address].append(dns_event_query.timestamp)
 
-            for domain in domains: 
-                self.domain_history[domain].append(dns_event_query.timestamp)
-                self.ip_history[ip_address].append(dns_event_query.timestamp)
+            domains.append(qname)
 
-            sub_domains.extend(domains)
-
-        self._reap_old_queries(sub_domains, ip_address)
+        self._reap_old_queries(domains, ip_address)
 
 
         # For each sub domain, find the domain that is most suspicious 
         max_domain_sus_percentage = 0.0
-        for domain in sub_domains: 
+        for domain in domains: 
             num_queries = len(self.domain_history[domain])
             domain_sus_percentage = num_queries / self.num_queries_for_domain_threshold
             max_domain_sus_percentage = max(domain_sus_percentage, max_domain_sus_percentage)
@@ -91,7 +88,7 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
         return min(1.0, sus_percentage)
 
 
-    def _reap_old_queries(self, sub_domains: list[str], ip_address: str): 
+    def _reap_old_queries(self, domains: list[str], ip_address: str): 
         """
         Remove queries greater than the max time difference threshold set in constructor
 
@@ -102,7 +99,7 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
         get_next_timestamp = lambda history, key: history[key][0] if history[key] else None
         is_old = lambda now, timestamp, threshold: (now - timestamp).total_seconds() / 60 > threshold
 
-        for domain in sub_domains: 
+        for domain in domains: 
             domain_timestamp = get_next_timestamp(self.domain_history, domain)
             while domain_timestamp and is_old(now, domain_timestamp, self.domain_minute_difference_threshold): 
                 self.domain_history[domain].popleft()

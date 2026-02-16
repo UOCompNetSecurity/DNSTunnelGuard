@@ -2,17 +2,20 @@
 import struct
 import socket 
 
-def parse_qname_no_tld(qname: str) -> list[str]: 
+def split_labels(qname: str) -> list[str]: 
     """
     Splits a qname into parts, excludes the top level domain 
     """
     if not qname: 
         return []
+
     domains = qname.split('.')
 
     split = [".".join(domains[i:]) for i in range(len(domains)) if domains[i]]
 
-    split.pop() # pop tld 
+    for i in range(len(split)): 
+        if split[i][-1] == '.': 
+            split[i] = split[i][:-1]
 
     return split
 
@@ -29,7 +32,6 @@ def tld(qname: str) -> str:
         return domains[-1]
     else: 
         return domains[-2]
-
 
 
 def ip_to_wire(ip_addr: str): 

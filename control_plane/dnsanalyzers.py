@@ -24,14 +24,3 @@ class DNSAnalyzer:
         raise NotImplementedError("report method not implemented")
 
 
-
-class DNSChecker: 
-    """
-    DNS checkers have the power to rule a domain 100% unsuspicious 
-    and pass through without further inspection 
-
-    """
-
-    def is_benign(self, dns_event_query: RecordEvent) -> bool: 
-        raise NotImplementedError("check method not implemented")
-

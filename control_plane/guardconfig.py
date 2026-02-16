@@ -1,10 +1,69 @@
 
+
+
+from configparser import ConfigParser
+from dnsanalyzers import DNSAnalyzer 
+from dnslist import DNSList
+from csvdnslist import CSVDomainList
 from firewall import Firewall, BPFFirewall, CSVFirewall
 from recordreceiver import RecordReceiver, BPFRecordReceiver, CSVRecordReceiver
 from bpfmanager import BPFManager 
-
-from configparser import ConfigParser
 from dataclasses import dataclass
+from trafficanalyzer import TrafficDNSAnalyzer
+from entropyanalyzer import EntropyDNSAnalyzer
+import logging
+logger = logging.getLogger(__name__)
+
+def parse_analyzer_types(config: ConfigParser) -> list[DNSAnalyzer]: 
+    analyzers = []
+
+    entropy_config = config['entropyanalyzer']
+    if entropy_config['enabled'] == 'true': 
+        logger.info("Initializing entropy analyzer")
+        entropy_config = config['entropyanalyzer']
+        analyzers.append(EntropyDNSAnalyzer(weight_percentage=float(entropy_config["weight_percentage"]),
+                                            max_entropy=float(entropy_config["max_entropy"])))
+
+    traffic_config = config['trafficanalyzer']
+    if traffic_config['enabled'] == 'true': 
+        logger.info("Initializing traffic analyzer")
+        analyzers.append(TrafficDNSAnalyzer(weight_percentage=float(traffic_config["weight_percentage"]), 
+                                            ip_minute_difference_threshold= 
+                                                float(traffic_config["ip_minute_difference_threshold"]), 
+                                            domain_minute_difference_threshold=
+                                                float(traffic_config["domain_minute_difference_threshold"]), 
+                                            num_queries_for_domain_threshold=
+                                                int(traffic_config["num_queries_for_domain_threshold"]), 
+                                            num_queries_from_ip_threshold=
+                                                int(traffic_config["num_queries_from_ip_threshold"]), 
+                                            ip_weight=float(traffic_config["ip_weight"]), 
+                                            domain_weight=float(traffic_config["domain_weight"])
+                                            ))
+
+    return analyzers
+
+
+def parse_dns_whitelist_types(config: ConfigParser) -> list[DNSList]: 
+
+    dns_lists = []
+
+    top_domains_config = config['top_domains_list']
+    if top_domains_config['enabled'] == 'true': 
+        logger.info("Initializing DNS Whitelists")
+        dns_lists.append(CSVDomainList(csv_path=top_domains_config["domain_list_csv_path"]))
+
+    return dns_lists
+
+ 
+def parse_tld_list(config: ConfigParser) -> DNSList | None: 
+    top_tld_config = config['top_tld_list']
+    if top_tld_config['enabled'] == 'true': 
+        logger.info("Initializing TLD List")
+        return CSVDomainList(csv_path=top_tld_config["tld_list_csv_path"])
+    return None
+
+
+# ------------- Guard Controller Resources 
 
 def parse_guard_types(args, config: ConfigParser) -> tuple[RecordReceiver, Firewall]: 
 
@@ -17,7 +76,6 @@ def parse_guard_types(args, config: ConfigParser) -> tuple[RecordReceiver, Firew
     return parse_record_receiver(config, resources), parse_firewall(config, resources) 
 
 
-# -------------- Private
 
 @dataclass
 class GuardResources: 
@@ -61,5 +119,35 @@ def parse_record_receiver(config: ConfigParser, resources: GuardResources) -> Re
         return CSVRecordReceiver(resources.receiver_csv_path)
     else: 
         raise Exception(f"Invalid Record Receiver type: {receiver_type}")
+
+# ---------------- Logging
+
+def setup_logging(config: ConfigParser): 
+
+    level_str = config["logging"]["level"]
+    level = logging.DEBUG
+
+    match level_str: 
+        case "DEBUG": 
+            level = logging.DEBUG
+        case "INFO": 
+            level = logging.INFO
+        case "WARNING": 
+            level = logging.WARNING
+        case "ERROR": 
+            level = logging.ERROR
+        case "CRITICAL": 
+            level = logging.CRITICAL
+        case _: 
+            raise Exception("Invalid logging level")
+
+    output = config["logging"]["output"]
+
+    if output != "stdout": 
+        logging.basicConfig(filename=output, level=level)
+    else: 
+        logging.basicConfig(level=level)
+
+
 
 
