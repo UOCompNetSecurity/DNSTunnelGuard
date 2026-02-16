@@ -3,8 +3,7 @@
 
 from configparser import ConfigParser
 from dnsanalyzers import DNSAnalyzer 
-from dnslist import DNSList
-from csvdnslist import CSVDomainList
+from domainlist import DomainList
 from firewall import Firewall, BPFFirewall, CSVFirewall
 from recordreceiver import RecordReceiver, BPFRecordReceiver, CSVRecordReceiver
 from bpfmanager import BPFManager 
@@ -43,23 +42,23 @@ def parse_analyzer_types(config: ConfigParser) -> list[DNSAnalyzer]:
     return analyzers
 
 
-def parse_dns_whitelist_types(config: ConfigParser) -> list[DNSList]: 
+def parse_dns_whitelist_types(config: ConfigParser) -> list[DomainList]: 
 
     dns_lists = []
 
     top_domains_config = config['top_domains_list']
     if top_domains_config['enabled'] == 'true': 
         logger.info("Initializing DNS Whitelists")
-        dns_lists.append(CSVDomainList(csv_path=top_domains_config["domain_list_csv_path"]))
+        dns_lists.append(DomainList(path=top_domains_config["path"]))
 
     return dns_lists
 
  
-def parse_tld_list(config: ConfigParser) -> DNSList | None: 
+def parse_tld_list(config: ConfigParser) -> DomainList | None: 
     top_tld_config = config['top_tld_list']
     if top_tld_config['enabled'] == 'true': 
         logger.info("Initializing TLD List")
-        return CSVDomainList(csv_path=top_tld_config["tld_list_csv_path"])
+        return DomainList(path=top_tld_config["path"])
     return None
 
 
@@ -147,6 +146,20 @@ def setup_logging(config: ConfigParser):
         logging.basicConfig(filename=output, level=level)
     else: 
         logging.basicConfig(level=level)
+
+
+def parse_blacklist(config: ConfigParser) -> DomainList: 
+    return DomainList(config["domain_blacklist"]["path"])
+
+
+
+
+
+
+
+
+
+
 
 
 

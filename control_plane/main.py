@@ -38,12 +38,15 @@ def main():
 
     guardconfig.setup_logging(config)
 
+    logger.info(f"Using configuration {config_path}")
+
     try: 
         record_receiver, firewall = guardconfig.parse_guard_types(args, config)
         analyzers = guardconfig.parse_analyzer_types(config)
         whitelists = guardconfig.parse_dns_whitelist_types(config)
         tld_list = guardconfig.parse_tld_list(config)
         sus_percentage_threshold = float(config["analyzer"]["sus_percentage_threshold"])
+        blacklist = guardconfig.parse_blacklist(config)
 
     except Exception as e: 
         logging.critical(f"Invalid configuration: {str(e)}")
@@ -52,12 +55,13 @@ def main():
     guard_controller = GuardController(whitelists=whitelists, 
                                        analyzers=analyzers, 
                                        firewall=firewall, 
+                                       blacklist=blacklist,
                                        sus_percentage_threshold=sus_percentage_threshold, 
                                        tld_list=tld_list)
 
     record_receiver.set_on_recv(guard_controller.process_record)
 
-    logger.info(f"Tunnel Guard Running using config -> {config_path}")
+    logger.info(f"Tunnel Guard Up and Running")
 
     try: 
         with record_receiver: 
