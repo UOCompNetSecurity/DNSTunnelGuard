@@ -43,7 +43,6 @@ def main():
         tld_list = guardconfig.parse_tld_list(config)
         analyzers = guardconfig.parse_analyzer_types(config, tld_list)
         sus_percentage_threshold = guardconfig.parse_percentage_threshold(config)
-        sus_percentage_threshold = guardconfig.parse_percentage_threshold(config)
         blacklist = guardconfig.parse_blacklist(config)
 
     except Exception as e:
