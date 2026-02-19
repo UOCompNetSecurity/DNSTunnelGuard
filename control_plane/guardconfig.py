@@ -12,7 +12,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def parse_analyzer_types(config: ConfigParser) -> list[DNSAnalyzer]:
+def parse_analyzer_types(
+    config: ConfigParser, tld_list: DomainList
+) -> list[DNSAnalyzer]:
     analyzers = []
 
     entropy_config = config["entropyanalyzer"]
@@ -32,20 +34,11 @@ def parse_analyzer_types(config: ConfigParser) -> list[DNSAnalyzer]:
         analyzers.append(
             TrafficDNSAnalyzer(
                 weight_percentage=float(traffic_config["weight_percentage"]),
-                ip_minute_difference_threshold=float(
-                    traffic_config["ip_minute_difference_threshold"]
+                minute_difference_threshold=float(
+                    traffic_config["minute_difference_threshold"]
                 ),
-                domain_minute_difference_threshold=float(
-                    traffic_config["domain_minute_difference_threshold"]
-                ),
-                num_queries_for_domain_threshold=int(
-                    traffic_config["num_queries_for_domain_threshold"]
-                ),
-                num_queries_from_ip_threshold=int(
-                    traffic_config["num_queries_from_ip_threshold"]
-                ),
-                ip_weight=float(traffic_config["ip_weight"]),
-                domain_weight=float(traffic_config["domain_weight"]),
+                num_queries_threshold=int(traffic_config["num_queries_threshold"]),
+                tld_list=tld_list,
             )
         )
 
@@ -64,12 +57,10 @@ def parse_dns_whitelist_types(config: ConfigParser) -> list[DomainList]:
     return dns_lists
 
 
-def parse_tld_list(config: ConfigParser) -> DomainList | None:
+def parse_tld_list(config: ConfigParser) -> DomainList:
     top_tld_config = config["top_tld_list"]
-    if top_tld_config["enabled"] == "true":
-        logger.info("Initializing TLD List")
-        return DomainList(path=top_tld_config["path"])
-    return None
+    logger.info("Initializing TLD List")
+    return DomainList(path=top_tld_config["path"])
 
 
 # ------------- Guard Controller Resources

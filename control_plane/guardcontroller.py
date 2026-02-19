@@ -89,7 +89,7 @@ class GuardController:
                 self.blacklist.update(domain)
 
     def _get_blockable_domains(self, qname: str) -> list[str]:
-        sub_domains = parseutils.split_labels(qname)
+        sub_domains = parseutils.split_subdomains(qname)
         return [
             domain
             for domain in sub_domains

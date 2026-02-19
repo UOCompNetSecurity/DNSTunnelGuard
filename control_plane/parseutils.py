@@ -2,9 +2,10 @@ import struct
 import socket
 
 
-def split_labels(qname: str) -> list[str]:
+def split_subdomains(qname: str) -> list[str]:
     """
-    Splits a qname into parts, excludes the top level domain
+    Splits a qname into subdomains
+    Ex: jjj.attacker.com -> ['jjj.attacker.com', 'attacker.com', '.com']
     """
     if not qname:
         return []
