@@ -1,94 +1,79 @@
-
-
 from dnsanalyzers import DNSAnalyzer
 from recordevent import RecordEvent
 from datetime import datetime
 from collections import defaultdict, deque
 import parseutils
-
+import domainlist
 
 
 class TrafficDNSAnalyzer(DNSAnalyzer):
     """
     Analyze a DNS query based on traffic history
 
+    Uses IP and Domain name pairs to track how often an IP address queries for a
+    subdomain. If this IP queries for a subdomain larger a number of times
+    large than some threshold, the query is suspicious.
+
     """
 
-    def __init__(self, weight_percentage: float, 
-                 ip_minute_difference_threshold: float, 
-                 domain_minute_difference_threshold: float,
-                 num_queries_for_domain_threshold: int, 
-                 num_queries_from_ip_threshold: int, 
-                 ip_weight: float, 
-                 domain_weight: float): 
+    def __init__(
+        self,
+        weight_percentage: float,
+        minute_difference_threshold: float,
+        num_queries_threshold: int,
+        tld_list: domainlist.DomainList | list[str],
+    ):
         """
-        weight_percentage: 
-            Used to store weight percentage towards analyzer, not used in analyze calculation 
-        ip_minute_difference_threshold: 
-            The max threshold in minutes IP addresses should be kept in history
-        domain_minute_difference_threshold: 
-            The max threshold in minutes domains should be kept in history
-        num_queries_threshold: 
-            Number of queries needed for 100% suspicion for domain name reuse
-        num_queries_from_ip_threshold: 
-            Number of queries needed for 100% suspicion for queries from the same ip address
-        ip_weight: 
-            The weight from seeing repeated IP addresses holds in final suspicion value
-        domain_weight: 
-            The weight from seeing repeated domain names holds in final suspicion value  
-
+        weight_percentage:
+            Used to store percentage in the analyzer for use of final weight calc
+        minute_difference_threshold:
+            The number of minutes a query subdomain pair should be kept in history
+        num_queries_threshold:
+            The number of times a query subdomain pair needs to be seen for 100% suspicion.
+            The suspicion percentage value from analyze will be scaled to this value
+        tld_list:
+            List of common top level domains, so that some top level domain and ip pairing
+            is not counted in history
         """
 
         super().__init__(weight_percentage)
-        assert num_queries_for_domain_threshold > 0 and num_queries_from_ip_threshold > 0
-        self.ip_minute_difference_threshold     = ip_minute_difference_threshold 
-        self.domain_minute_difference_threshold = domain_minute_difference_threshold
-        self.ip_history     = defaultdict(deque[datetime])
-        self.domain_history = defaultdict(deque[datetime])
-        self.num_queries_for_domain_threshold = num_queries_for_domain_threshold 
-        self.num_queries_from_ip_threshold = num_queries_from_ip_threshold
-        self.ip_sus_weight = ip_weight 
-        self.domain_sus_weight = domain_weight 
-
+        assert num_queries_threshold > 0
+        self.history = defaultdict(deque[datetime])
+        self.minute_difference_threshold = minute_difference_threshold
+        self.num_queries_threshold = num_queries_threshold
+        self.tld_list = tld_list
 
     def analyze(self, dns_event_query: RecordEvent) -> float:
         """
         Analyze a query based on traffic history for the domains and source IP address
 
         Returns an unweighted suspicion percentage
-        
+
         """
 
         ip_address = dns_event_query.src_ip_addr
         domains = []
-        for question in dns_event_query.record.questions: 
-            qname = str(question.qname)
-
-            self.domain_history[qname].append(dns_event_query.timestamp)
-            self.ip_history[ip_address].append(dns_event_query.timestamp)
-
-            domains.append(qname)
+        for question in dns_event_query.record.questions:
+            subdomains = parseutils.split_subdomains(str(question.qname))
+            for subdomain in subdomains:
+                if subdomain not in self.tld_list:
+                    self.history[(ip_address, subdomain)].append(
+                        dns_event_query.timestamp
+                    )
+                    domains.append(subdomain)
 
         self._reap_old_queries(domains, ip_address)
 
+        # Return the most sus domain if there were multiple questions
+        max_sus_percentage = 0.0
+        for domain in domains:
+            num_queries = len(self.history[(ip_address, domain)])
+            sus_percentage = num_queries / self.num_queries_threshold
+            max_sus_percentage = max(sus_percentage, max_sus_percentage)
 
-        # For each sub domain, find the domain that is most suspicious 
-        max_domain_sus_percentage = 0.0
-        for domain in domains: 
-            num_queries = len(self.domain_history[domain])
-            domain_sus_percentage = num_queries / self.num_queries_for_domain_threshold
-            max_domain_sus_percentage = max(domain_sus_percentage, max_domain_sus_percentage)
+        return min(1.0, max_sus_percentage)
 
-        num_queries_from_ip = len(self.ip_history[ip_address])
-        ip_sus_percentage = num_queries_from_ip / self.num_queries_from_ip_threshold
-
-        sus_percentage = (ip_sus_percentage * self.ip_sus_weight) + \
-                         (max_domain_sus_percentage * self.domain_sus_weight)
-
-        return min(1.0, sus_percentage)
-
-
-    def _reap_old_queries(self, domains: list[str], ip_address: str): 
+    def _reap_old_queries(self, domains: list[str], ip_address: str):
         """
         Remove queries greater than the max time difference threshold set in constructor
 
@@ -96,26 +81,19 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
 
         now = datetime.now()
 
-        get_next_timestamp = lambda history, key: history[key][0] if history[key] else None
-        is_old = lambda now, timestamp, threshold: (now - timestamp).total_seconds() / 60 > threshold
+        peek_timestamp = lambda key: (
+            self.history[key][0] if self.history[key] else None
+        )
 
-        for domain in domains: 
-            domain_timestamp = get_next_timestamp(self.domain_history, domain)
-            while domain_timestamp and is_old(now, domain_timestamp, self.domain_minute_difference_threshold): 
-                self.domain_history[domain].popleft()
-                domain_timestamp = get_next_timestamp(self.domain_history, domain)
-
-        ip_timestamp = get_next_timestamp(self.ip_history, ip_address)
-        while ip_timestamp and is_old(now, ip_timestamp, self.ip_minute_difference_threshold): 
-            self.ip_history[ip_address].popleft()
-            ip_timestamp = get_next_timestamp(self.ip_history, ip_address)
-
+        for domain in domains:
+            timestamp = peek_timestamp((ip_address, domain))
+            while (
+                timestamp
+                and (now - timestamp).total_seconds() / 60
+                > self.minute_difference_threshold
+            ):
+                self.history[(ip_address, domain)].popleft()
+                timestamp = peek_timestamp((ip_address, domain))
 
     def report(self) -> str:
-        report_str = f"Traffic Analyzer Report: \n \
-                       IP address history: {self.ip_history}\n \
-                       Domain history: {self.domain_history}"  
-
-        return report_str
-
-
+        return ""

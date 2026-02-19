@@ -1,4 +1,3 @@
-
 from argparse import ArgumentParser
 from configparser import ConfigParser
 from guardcontroller import GuardController
@@ -6,27 +5,25 @@ import guardconfig
 import sys
 
 import logging
+
 logger = logging.getLogger(__name__)
 
-def main(): 
+
+def main():
     parser = ArgumentParser(description="DNS Tunnel Guard Options")
 
-    parser.add_argument(
-        '--config_path', 
-        required=False, 
-        help='Path to config file'
-    )
+    parser.add_argument("--config_path", required=False, help="Path to config file")
 
     parser.add_argument(
-        '--csv_firewall_path',
+        "--csv_firewall_path",
         required=False,
-        help='Path to emulated CSV file of blocked IP addresses and domain names'
+        help="Path to emulated CSV file of blocked IP addresses and domain names",
     )
 
     parser.add_argument(
-        '--csv_records_path', 
-        required=False, 
-        help='Path to emulated CSV file of DNS records'
+        "--csv_records_path",
+        required=False,
+        help="Path to emulated CSV file of DNS records",
     )
 
     args = parser.parse_args()
@@ -40,38 +37,38 @@ def main():
 
     logger.info(f"Using configuration {config_path}")
 
-    try: 
+    try:
         record_receiver, firewall = guardconfig.parse_guard_types(args, config)
-        analyzers = guardconfig.parse_analyzer_types(config)
         whitelists = guardconfig.parse_dns_whitelist_types(config)
         tld_list = guardconfig.parse_tld_list(config)
+        analyzers = guardconfig.parse_analyzer_types(config, tld_list)
         sus_percentage_threshold = guardconfig.parse_percentage_threshold(config)
         sus_percentage_threshold = guardconfig.parse_percentage_threshold(config)
         blacklist = guardconfig.parse_blacklist(config)
 
-    except Exception as e: 
+    except Exception as e:
         logging.critical(f"Invalid configuration: {str(e)}")
         sys.exit(1)
 
-    guard_controller = GuardController(whitelists=whitelists, 
-                                       analyzers=analyzers, 
-                                       firewall=firewall, 
-                                       blacklist=blacklist,
-                                       sus_percentage_threshold=sus_percentage_threshold, 
-                                       tld_list=tld_list)
+    guard_controller = GuardController(
+        whitelists=whitelists,
+        analyzers=analyzers,
+        firewall=firewall,
+        blacklist=blacklist,
+        sus_percentage_threshold=sus_percentage_threshold,
+        tld_list=tld_list,
+    )
 
     record_receiver.set_on_recv(guard_controller.process_record)
 
     logger.info(f"Tunnel Guard Up and Running")
 
-    try: 
-        with record_receiver: 
+    try:
+        with record_receiver:
             record_receiver.receive()
-    except KeyboardInterrupt: 
+    except KeyboardInterrupt:
         pass
 
-if __name__ == "__main__": 
+
+if __name__ == "__main__":
     main()
-
-
-

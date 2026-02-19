@@ -1,13 +1,14 @@
-
 from dnslib import DNSRecord
-from dataclasses import dataclass 
+from dataclasses import dataclass
 from datetime import datetime
 
-@dataclass 
-class RecordEvent: 
+
+@dataclass
+class RecordEvent:
     """
-    Event for either query or response receival 
+    Event for either query or response receival
     """
-    record: DNSRecord 
+
+    record: DNSRecord
     timestamp: datetime
     src_ip_addr: str
