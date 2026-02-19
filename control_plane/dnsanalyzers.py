@@ -1,19 +1,19 @@
-
 from recordevent import RecordEvent
+
 
 class DNSAnalyzer:
     """
     Abstract Base Class for all types of DNS query analyzers
     """
 
-    def __init__(self, weight_percentage: float, can_whitelist=False): 
+    def __init__(self, weight_percentage: float, can_whitelist=False):
         self.weight_percentage = weight_percentage
         self.can_whitelist = can_whitelist
 
     def analyze(self, dns_event_query: RecordEvent) -> float:
         """
         Process and analyze one single DNS query
-        Returns weight of suspicion of being tunneling 
+        Returns weight of suspicion of being tunneling
         """
         raise NotImplementedError("process event method not implemented")
 
@@ -22,5 +22,3 @@ class DNSAnalyzer:
         Return reported actions and statistics based on analysis
         """
         raise NotImplementedError("report method not implemented")
-
-
