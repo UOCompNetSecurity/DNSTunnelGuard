@@ -19,7 +19,7 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
     def __init__(
         self,
         weight_percentage: float,
-        identifer: str, 
+        identifer: str,
         minute_difference_threshold: float,
         num_queries_threshold: int,
         tld_list: domainlist.DomainList | list[str],
@@ -27,7 +27,7 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
         """
         weight_percentage:
             Used to store percentage in the analyzer for use of final weight calc
-        identifer: 
+        identifer:
             Name of the analyzer
         minute_difference_threshold:
             The number of minutes a query subdomain pair should be kept in history
@@ -101,26 +101,10 @@ class TrafficDNSAnalyzer(DNSAnalyzer):
     def report(self) -> str:
 
         report_str = "-- Traffic Analysis Report --\n"
-        for key, timestmap in self.history.items(): 
+        for key, timestmap in self.history.items():
             addr, domain = key
-            report_str += f"IP Address: {addr} | Sub Domain {domain} | Timestamp: {timestmap}"
+            report_str += (
+                f"IP Address: {addr} | Sub Domain {domain} | Timestamp: {timestmap}"
+            )
 
         return report_str
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

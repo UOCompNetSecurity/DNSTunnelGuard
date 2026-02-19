@@ -61,7 +61,9 @@ class GuardController:
             for question in event.record.questions
         ]
 
-        logger.info(f"Query Received. Domains: {qnames} from IP address {event.src_ip_addr} at {event.timestamp}")
+        logger.info(
+            f"Query Received. Domains: {qnames} from IP address {event.src_ip_addr} at {event.timestamp}"
+        )
 
         for wl in self.whitelists:
             for domain in qnames:
@@ -78,7 +80,9 @@ class GuardController:
             analyzer_percentage = analyzer.analyze(event) * analyzer.weight_percentage
             sus_percentage += analyzer_percentage
             logger.debug(analyzer.report())
-            logger.info(f"{analyzer.identifer} analyzer found query {analyzer_percentage * 100}% suspicious")
+            logger.info(
+                f"{analyzer.identifer} analyzer found query {analyzer_percentage * 100}% suspicious"
+            )
 
         logger.info(f"Total query suspicion percentage: {sus_percentage * 100}%")
         if sus_percentage >= self.sus_percentage_threshold:

@@ -9,7 +9,9 @@ class EntropyDNSAnalyzer(DNSAnalyzer):
     DNSAnalyzer child class that analyzes DNS query qnames for different levels of entropy (randomness)
     """
 
-    def __init__(self, weight_percentage: float, identifer: str, max_entropy: float) -> None:
+    def __init__(
+        self, weight_percentage: float, identifer: str, max_entropy: float
+    ) -> None:
         super().__init__(weight_percentage, identifer)
         self.max_entropy = max_entropy
 
