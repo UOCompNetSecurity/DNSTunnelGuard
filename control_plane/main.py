@@ -47,7 +47,7 @@ def main():
         blacklist = guardconfig.parse_blacklist(config)
 
     except Exception as e:
-        logging.critical(f"Invalid configuration: {str(e)}")
+        logger.critical(f"Invalid configuration: {str(e)}")
         sys.exit(1)
 
     guard_controller = GuardController(
