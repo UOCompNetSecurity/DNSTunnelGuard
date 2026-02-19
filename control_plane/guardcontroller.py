@@ -59,7 +59,7 @@ class GuardController:
         for wl in self.whitelists: 
             for domain in qnames: 
                 if domain in wl: 
-                    logging.debug("Query found benign")
+                    logging.debug("Query found benign :)")
                     return 
 
         blockable_domains = []
@@ -71,12 +71,13 @@ class GuardController:
             sus_percentage += analyzer.analyze(event) * analyzer.weight_percentage
             logging.info("Analyzer Report: " + analyzer.report())
 
+        logger.debug(f"Sus Percentage: {sus_percentage}")
         if sus_percentage >= self.sus_percentage_threshold: 
-            logger.warning(f"Suspicious query detected from IP address f{event.src_ip_addr}")
+            logger.warning(f"Suspicious query detected from IP address {event.src_ip_addr}")
 
             self.firewall.block_ip_address(event.src_ip_addr)
             for domain in blockable_domains:
-                logger.debug(f"Blocking f{domain}")
+                logger.warning(f"Blocking suspicious domain {domain}")
                 self.firewall.block_domain(domain)
                 self.blacklist.update(domain)
 
