@@ -55,16 +55,20 @@ class GuardController:
         """
         Callback to be used on every record event
         """
-        logger.debug(f"Processing Query {event}")
+        logger.debug(event)
         qnames = [
             parseutils.parse_qname(str(question.qname))
             for question in event.record.questions
         ]
 
+        logger.info(
+            f"Query Received. Domains: {qnames} from IP address {event.src_ip_addr} at {event.timestamp}"
+        )
+
         for wl in self.whitelists:
             for domain in qnames:
                 if domain in wl:
-                    logging.debug("Query found benign :)")
+                    logger.info("Query found benign")
                     return
 
         blockable_domains = []
@@ -73,14 +77,19 @@ class GuardController:
         sus_percentage = 0.0
 
         for analyzer in self.analyzers:
-            sus_percentage += analyzer.analyze(event) * analyzer.weight_percentage
-            logging.info("Analyzer Report: " + analyzer.report())
+            analyzer_percentage = analyzer.analyze(event) * analyzer.weight_percentage
+            sus_percentage += analyzer_percentage
+            logger.debug(analyzer.report())
+            logger.info(
+                f"{analyzer.identifer} analyzer found query {analyzer_percentage * 100}% suspicious"
+            )
 
-        logger.debug(f"Sus Percentage: {sus_percentage}")
+        logger.info(f"Total query suspicion percentage: {sus_percentage * 100}%")
         if sus_percentage >= self.sus_percentage_threshold:
             logger.warning(
                 f"Suspicious query detected from IP address {event.src_ip_addr}"
             )
+            logger.warning(f"Blocking IP address {event.src_ip_addr}")
 
             self.firewall.block_ip_address(event.src_ip_addr)
             for domain in blockable_domains:

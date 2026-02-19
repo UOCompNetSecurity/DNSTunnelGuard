@@ -6,9 +6,9 @@ class DNSAnalyzer:
     Abstract Base Class for all types of DNS query analyzers
     """
 
-    def __init__(self, weight_percentage: float, can_whitelist=False):
+    def __init__(self, weight_percentage: float, identifer: str):
         self.weight_percentage = weight_percentage
-        self.can_whitelist = can_whitelist
+        self.identifer = identifer
 
     def analyze(self, dns_event_query: RecordEvent) -> float:
         """

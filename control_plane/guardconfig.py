@@ -24,6 +24,7 @@ def parse_analyzer_types(
         analyzers.append(
             EntropyDNSAnalyzer(
                 weight_percentage=float(entropy_config["weight_percentage"]),
+                identifer="Entropy",
                 max_entropy=float(entropy_config["max_entropy"]),
             )
         )
@@ -34,6 +35,7 @@ def parse_analyzer_types(
         analyzers.append(
             TrafficDNSAnalyzer(
                 weight_percentage=float(traffic_config["weight_percentage"]),
+                identifer="Traffic",
                 minute_difference_threshold=float(
                     traffic_config["minute_difference_threshold"]
                 ),
