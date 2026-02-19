@@ -19,6 +19,13 @@ def split_labels(qname: str) -> list[str]:
 
     return split
 
+def parse_qname(qname: str) -> str: 
+    if qname.endswith('.'): 
+        return qname[:-1]
+    return qname
+    
+
+
 def tld(qname: str) -> str: 
     """
     Get the top level domain of a full domain name
